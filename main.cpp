@@ -11,9 +11,7 @@ using namespace std;
  * ToDo:
  *
  *  add automatical iteration contol
- *  add multy-resolution grids
  *  add selectivity to multy-resolution
- *
  *
  *
  */
@@ -42,6 +40,12 @@ int main()
 {
     PoissonTask* test = new test1(0,M_PI,0,M_PI,16,16);
     test->Iterate(100);
+    test->Output();
+    test->DoubleGrid();
+    test->Iterate(100);
+    test->Output();
+    test->DoubleGrid();
+    test->Iterate(1000);
     test->Output();
     return 0;
 }

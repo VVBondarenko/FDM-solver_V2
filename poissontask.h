@@ -9,6 +9,7 @@ class PoissonTask
 {
 public:
     PoissonTask(double LX, double RX, double LY, double RY, int XSize, int YSize);
+
     double lx, rx;
     double ly, ry;
     int xSize, ySize;
@@ -28,10 +29,10 @@ public:
         return 0.;
     }
 
-//    void init_boundary(); //moved to constructor
     void Iterate(int n);
     void Output();
     double EstimateError();
+    void DoubleGrid();
 
 private:
     double hx, hy;

@@ -8,3 +8,4 @@ SOURCES += main.cpp \
 
 HEADERS += \
     poissontask.h
+

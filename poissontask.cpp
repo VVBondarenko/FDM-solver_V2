@@ -137,3 +137,66 @@ double PoissonTask::EstimateError()
     }
     return maxErr;
 }
+
+void PoissonTask::DoubleGrid()
+{
+    int i,j;
+    for(i=0;i<xSize;i++)
+    {
+        for(j=0;j<ySize;j++)
+        {
+            tmp_u[i][j] = u[i][j];
+        }
+    }
+
+    int NxSize = 2*xSize-1;
+    int NySize = 2*ySize-1;
+
+    delete [] u;
+    delete [] u_err;
+
+    u = new double* [NxSize];
+    for(i = 0; i < NxSize; i++)
+            u[i] = new double[NySize];
+
+
+    u_err = new double* [NxSize];
+    for(i = 0; i < NxSize; i++)
+        u_err[i] = new double[NySize];
+
+    //перенос старых значений
+    for(i=0;i<xSize;i++)
+        for(j=0;j<ySize;j++)
+            u[2*i][2*j] = tmp_u[i][j];
+
+    //межузловая интерполяция
+    for(i=1;i<NxSize;i+=2)
+        for(j=0;j<ySize;j++)
+            u[i][2*j] = (tmp_u[i/2][j]+tmp_u[i/2+1][j])/2;
+    for(i=0;i<xSize;i++)
+        for(j=1;j<NySize;j+=2)
+            u[2*i][j] = (tmp_u[i][j/2]+tmp_u[i][j/2+1])/2;
+
+    //инетрполяция центра ячейки
+    //(имеет ли смысл заморачиваться и прописывать это значение из дискретизации уравнения Пуассона?)
+    for(i=1;i<NxSize;i+=2)
+        for(j=1;j<NySize;j+=2)
+            u[i][j] = (u[i+1][j]+u[i-1][j]+u[i][j+1]+u[i][j-1])/4;
+
+    xSize = NxSize;
+    ySize = NySize;
+
+    hx = (rx-lx)/(xSize-1);
+    hy = (ry-ly)/(ySize-1);
+
+    delete [] tmp_u;
+
+    tmp_u = new double* [xSize];
+    for(i = 0; i < xSize; i++)
+        tmp_u[i] = new double[ySize];
+
+    for(i=0;i<xSize;i++)
+        for(j=0;j<ySize;j++)
+            tmp_u[i][j] = u[i][j];
+
+}

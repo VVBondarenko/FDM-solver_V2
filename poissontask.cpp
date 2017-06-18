@@ -120,7 +120,7 @@ void PoissonTask::Output()
     fclose(output);
 }
 
-double PoissonTask::EstimateError()
+double PoissonTask::ExactError()
 {
     int i, j;
     double maxErr = 0.;
@@ -135,6 +135,39 @@ double PoissonTask::EstimateError()
                 maxErr = u_err[i][j];
         }
     }
+    return maxErr;
+}
+
+double PoissonTask::EstimateConvolution()
+{
+    int i,j;
+    double maxErr;
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            tmp_u[i][j] = ((u[i+1][j]+u[i-1][j])*hy*hy
+                          +(u[i][j+1]+u[i][j-1])*hx*hx
+                          - rightpart_f(lx+i*hx,ly+j*hy)*hx*hx*hy*hy)/2/(hx*hx+hy*hy);
+        }
+    }
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            maxErr = fmax(maxErr, fabs(u[i][j]-tmp_u[i][j]));
+        }
+    }
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            u[i][j] = tmp_u[i][j];
+        }
+    }
+
     return maxErr;
 }
 

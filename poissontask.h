@@ -31,7 +31,8 @@ public:
 
     void Iterate(int n);
     void Output();
-    double EstimateError();
+    double ExactError();
+    double EstimateConvolution();
     void DoubleGrid();
 
 private:

@@ -39,16 +39,18 @@ public:
 int main()
 {
     PoissonTask* test = new test1(0,M_PI,0,M_PI,16,16);
-    test->Iterate(100);
-    test->Output();
-    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
-    test->DoubleGrid();
-    test->Iterate(200);
-    test->Output();
-    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
-    test->DoubleGrid();
-    test->Iterate(1000);
-    test->Output();
-    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
+    double err;
+    err = test->AutoIterate(1000,1e-9);
+//    test->Iterate(100);
+//    test->Output();
+//    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
+//    test->DoubleGrid();
+//    test->Iterate(200);
+//    test->Output();
+//    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
+//    test->DoubleGrid();
+//    test->Iterate(1000);
+//    test->Output();
+    printf("%e\t%e\t%e\n", err, test->EstimateConvolution(), test->ExactError());
     return 0;
 }

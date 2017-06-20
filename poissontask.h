@@ -30,7 +30,7 @@ public:
     }
 
     void Iterate(int n);
-    double AutoIterate(int maxIters, double precision);
+    double IterateWAutostop(int maxIters, double stop_criteria);
     void Output();
     double ExactError();
     double EstimateConvolution();

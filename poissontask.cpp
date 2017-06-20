@@ -101,28 +101,15 @@ void PoissonTask::Iterate(int n)
 
 }
 
-double PoissonTask::AutoIterate(int maxIters, double precision)
+double PoissonTask::IterateWAutostop(int maxIters, double stop_criteria)
 {
     int i;
-    double current_err = 1., previous_err = 2.;
-
-    for(i=0;i<maxIters && current_err>precision && i>=0;i++)
+    double current_err = 1.;
+    for(i=0;i<maxIters && current_err>stop_criteria && i>=0;i++)
     {
-        if((previous_err-current_err)/previous_err>1e-6)
-        {
             this->Iterate(30);
-            previous_err = current_err;
             current_err = this->EstimateConvolution();
             printf("Iters\n");
-        }
-        else
-        {
-            i--;
-            this->DoubleGrid();
-            current_err = 1.;
-            previous_err = 2.;
-            printf("Doubled grid\n");
-        }
     }
     return current_err;
 }

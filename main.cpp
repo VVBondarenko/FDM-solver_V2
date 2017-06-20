@@ -40,7 +40,7 @@ int main()
 {
     PoissonTask* test = new test1(0,M_PI,0,M_PI,16,16);
     double err;
-    err = test->AutoIterate(1000,1e-9);
+    err = test->IterateWAutostop(30,1e-9);
 //    test->Iterate(100);
 //    test->Output();
 //    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());

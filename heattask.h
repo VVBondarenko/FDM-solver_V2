@@ -1,12 +1,13 @@
 #ifndef HEATTASK_H
 #define HEATTASK_H
+#include <unistd.h>
 #include <math.h>
 #include <gnuplointerface.h>
 
 class HeatTask
 {
 public:
-    HeatTask(double LX, double RX, double LY, double RY, int XSize, int YSize, double dt);
+    HeatTask(double LX, double RX, double LY, double RY, int XSize, int YSize, double dt, double TCC);
 
     double lx, rx;
     double ly, ry;
@@ -35,6 +36,7 @@ public:
 
     void Output();
     void Plot(int Kind);
+    void Animate(double FinalTime);
     void ClosePlot();
 
 private:

@@ -16,7 +16,7 @@ using namespace std;
  *  add normal error control
  *  add selectivity to multy-resolution
  *  add inner boundaries with conditions
- *
+ *  fix bug in animation
  *
  */
 
@@ -65,7 +65,7 @@ class test2 : public HeatTask
 
 public:
     test2(double LX, double RX, double LY, double RY,
-          int XSize, int YSize, double dt) : HeatTask(LX, RX, LY, RY, XSize, YSize, dt)
+          int XSize, int YSize, double dt, double TCC) : HeatTask(LX, RX, LY, RY, XSize, YSize, dt, TCC)
     {   }
 
     virtual double rightpart_f(double x, double y, double t)
@@ -93,25 +93,28 @@ public:
 
 int main()
 {
-    int i, itMax = 2, temp;
-    HeatTask *test = new test2(0.,1.,0.,1.,32,32,0.0001);
+//    int i, itMax = 2, temp;
+    HeatTask *test = new test2(0.,1.,0.,1.,32,32,0.0001, 0.1);
     test->StepInTime_Euler();
-    test->Plot(0);
+//    test->Plot(1);
 
-    for(i = 0; i < itMax; i++)
-    {
-        if(i == itMax-1)
-        {
-            test->Plot(0);
-            scanf("%d", &temp);
-            itMax += temp;
-        }
-        else
-        {
-            test->StepInTime_Adams();
-        }
-    }
+//    for(i = 0; i < itMax; i++)
+//    {
+//        if(i == itMax-1)
+//        {
+//            test->Plot(1);
+//            scanf("%d", &temp);
+//            itMax += temp;
+//        }
+//        else
+//        {
+//            test->StepInTime_Adams();
+//        }
+//    }
 
-    test->ClosePlot();
+//    test->ClosePlot();
+
+    test->Animate(0.1);
+
     return 0;
 }

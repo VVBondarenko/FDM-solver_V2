@@ -1,7 +1,7 @@
 #include "heattask.h"
 
 
-HeatTask::HeatTask(double LX, double RX, double LY, double RY, int XSize, int YSize, double dt)
+HeatTask::HeatTask(double LX, double RX, double LY, double RY, int XSize, int YSize, double dt, double TCC)
 {
     if(RX>LX)
     {
@@ -33,6 +33,7 @@ HeatTask::HeatTask(double LX, double RX, double LY, double RY, int XSize, int YS
 
 
     this->dt = dt;
+    this->TCC = TCC;
 
     int i,j;
 
@@ -212,6 +213,35 @@ void HeatTask::Plot(int Kind)
             PreviousPlotKind = Kind;
         }
     }
+}
+
+void HeatTask::Animate(double FinalTime)
+{
+    ClosePlot();
+    Output();
+    std::vector<std::string> script;
+    script.push_back("set terminal gif animate delay 30");
+    script.push_back("set output \"heat_eq.gif\"");
+
+    script.push_back("set xrange [0:1]");
+    script.push_back("set yrange [0:1]");
+
+    script.push_back("splot \"result.dat\"");
+
+    Graph.open();
+    Graph.execute(script);
+
+    while(time < FinalTime)
+    {
+        for(int i=0; i<20; i++)
+            this->StepInTime_Adams();
+        Output();
+//        usleep(500);
+        Graph.write("splot \"result.dat\" ");
+        Graph.flush();
+    }
+
+    ClosePlot();
 }
 
 void HeatTask::ClosePlot()

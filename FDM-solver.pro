@@ -4,8 +4,10 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += main.cpp \
-    poissontask.cpp
+    poissontask.cpp \
+    gnuplointerface.cpp
 
 HEADERS += \
-    poissontask.h
+    poissontask.h \
+    gnuplointerface.h
 

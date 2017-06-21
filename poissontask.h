@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <gnuplointerface.h>
+
 
 class PoissonTask
 {
@@ -30,17 +32,24 @@ public:
     }
 
     void Iterate(int n);
-    double IterateWAutostop(int maxIters, double stop_criteria);
-    void Output();
+    void DoubleGrid();
+
     double ExactError();
     double EstimateConvolution();
-    void DoubleGrid();
+
+    double IterateWAutostop(int maxIters, double stop_criteria);
+
+    void Output();
+    void Plot();
+    void ClosePlot();
 
 private:
     double hx, hy;
     double **u;
     double **tmp_u;
     double **u_err;
+
+    GnuploInterface Graph;
 };
 
 #endif // POISSONTASK_H

@@ -133,6 +133,31 @@ void PoissonTask::Output()
     fclose(output);
 }
 
+void PoissonTask::Plot()
+{
+    Output();
+    if(!Graph.isOpened())
+    {
+        std::vector<std::string> script;
+        script.push_back("set terminal wxt");
+        script.push_back("splot \"result.dat\" w surface ");
+
+        Graph.open();
+        Graph.execute(script);
+    }
+    else
+    {
+        Graph.write("replot");
+        Graph.flush();
+    }
+}
+
+void PoissonTask::ClosePlot()
+{
+    if(Graph.isOpened())
+        Graph.close();
+}
+
 double PoissonTask::ExactError()
 {
     int i, j;

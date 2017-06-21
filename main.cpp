@@ -4,15 +4,19 @@
 //#include <math.h>
 
 #include <poissontask.h>
+//#include <gnuplointerface.h>
+
 
 using namespace std;
 
 /*
  * ToDo:
  *
- *  add automatical iteration contol
+ *  add normal error control
  *  add selectivity to multy-resolution
+ *  add inner boundaries with conditions
  *
+ *  develop class for thermoconductivity equation
  *
  */
 
@@ -41,16 +45,12 @@ int main()
     PoissonTask* test = new test1(0,M_PI,0,M_PI,16,16);
     double err;
     err = test->IterateWAutostop(30,1e-9);
-//    test->Iterate(100);
-//    test->Output();
-//    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
-//    test->DoubleGrid();
-//    test->Iterate(200);
-//    test->Output();
-//    printf("%e\t%e\n", test->EstimateConvolution(), test->ExactError());
-//    test->DoubleGrid();
-//    test->Iterate(1000);
-//    test->Output();
     printf("%e\t%e\t%e\n", err, test->EstimateConvolution(), test->ExactError());
+
+    test->Plot();
+    scanf("%f",&err);
+
+    test->ClosePlot();
+
     return 0;
 }

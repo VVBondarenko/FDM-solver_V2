@@ -56,20 +56,20 @@ PoissonTask::PoissonTask(double LX, double RX, double LY, double RY, int XSize, 
 
     for(i=0;i<xSize;i++)
     {
-        u[i][0] = boundary_u(lx+i*hx,ly);
-        tmp_u[i][0] = u[i][0];
+        u[i][0]             = boundary_u(lx+i*hx,ly);
+        tmp_u[i][0]         = u[i][0];
 
-        u[i][ySize-1] = boundary_u(lx+i*hx,ry);
-        tmp_u[i][ySize-1] = u[i][ySize-1];
+        u[i][ySize-1]       = boundary_u(lx+i*hx,ry);
+        tmp_u[i][ySize-1]   = u[i][ySize-1];
     }
 
     for(i=0;i<ySize;i++)
     {
-        u[0][i] = boundary_u(lx,ly+i*hy);
-        tmp_u[0][i] = u[0][i];
+        u[0][i]             = boundary_u(lx,ly+i*hy);
+        tmp_u[0][i]         = u[0][i];
 
-        u[i][ySize-1] = boundary_u(lx,ly+i*hy);
-        tmp_u[i][ySize-1] = u[i][ySize-1];
+        u[xSize-1][i]       = boundary_u(rx,ly+i*hy);
+        tmp_u[xSize-1][i]   = u[xSize-1][i];
     }
 
 }
@@ -133,22 +133,54 @@ void PoissonTask::Output()
     fclose(output);
 }
 
-void PoissonTask::Plot()
+void PoissonTask::Plot(int Kind)
 {
     Output();
     if(!Graph.isOpened())
     {
         std::vector<std::string> script;
         script.push_back("set terminal wxt");
-        script.push_back("splot \"result.dat\" w surface ");
+
+        if(Kind == 0)
+            script.push_back("splot \"result.dat\" w surface ");
+
+        if(Kind == 1)
+        {
+            script.push_back("set view map");
+            script.push_back("load '../parula.pal'");
+            script.push_back("splot \"result.dat\" using 1:2:3 with image");
+        }
 
         Graph.open();
         Graph.execute(script);
+        PreviousPlotKind = Kind;
     }
     else
     {
-        Graph.write("replot");
-        Graph.flush();
+        if(PreviousPlotKind == Kind)
+        {
+            Graph.write("replot");
+            Graph.flush();
+        }
+        else
+        {
+            std::vector<std::string> script;
+            script.push_back("reset");
+
+            if(Kind == 0)
+                script.push_back("splot \"result.dat\" w surface ");
+
+            if(Kind == 1)
+            {
+                script.push_back("set view map");
+                script.push_back("load '../parula.pal'");
+                script.push_back("splot \"result.dat\" using 1:2:3 with image");
+            }
+
+//            Graph.open();
+            Graph.execute(script);
+            PreviousPlotKind = Kind;
+        }
     }
 }
 

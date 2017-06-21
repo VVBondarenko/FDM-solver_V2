@@ -5,9 +5,11 @@ CONFIG -= qt
 
 SOURCES += main.cpp \
     poissontask.cpp \
-    gnuplointerface.cpp
+    gnuplointerface.cpp \
+    heattask.cpp
 
 HEADERS += \
     poissontask.h \
-    gnuplointerface.h
+    gnuplointerface.h \
+    heattask.h
 

@@ -1,8 +1,6 @@
 #ifndef POISSONTASK_H
 #define POISSONTASK_H
 #include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <gnuplointerface.h>
 
@@ -18,17 +16,17 @@ public:
 
     virtual double rightpart_f(double x, double y)
     {
-        return 0.;
+        return 0.*x*y;
     }
 
     virtual double boundary_u(double x, double y)
     {
-        return 0.;
+        return 0.*x*y;
     }
 
     virtual double exact_u(double x, double y)
     {
-        return 0.;
+        return 0.*x*y;
     }
 
     void Iterate(int n);
@@ -40,7 +38,7 @@ public:
     double IterateWAutostop(int maxIters, double stop_criteria);
 
     void Output();
-    void Plot();
+    void Plot(int Kind);
     void ClosePlot();
 
 private:
@@ -50,6 +48,7 @@ private:
     double **u_err;
 
     GnuploInterface Graph;
+    int PreviousPlotKind;
 };
 
 #endif // POISSONTASK_H

@@ -71,7 +71,7 @@ void HeatTask::StepInTime_Euler()
         {
             Prev_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
                                      (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
-                               rightpart_f(lx+i*hx,ly+j*hy,time);
+                                            rightpart_f(lx+i*hx,ly+j*hy,time);
         }
     }
 
@@ -109,7 +109,7 @@ void HeatTask::StepInTime_Adams()
         {
             Curr_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
                                      (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
-                               rightpart_f(lx+i*hx,ly+j*hy,time);
+                                            rightpart_f(lx+i*hx,ly+j*hy,time);
         }
     }
 
@@ -249,3 +249,5 @@ void HeatTask::ClosePlot()
     if(Graph.isOpened())
         Graph.close();
 }
+
+

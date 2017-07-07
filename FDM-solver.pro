@@ -13,3 +13,5 @@ HEADERS += \
     gnuplointerface.h \
     heattask.h
 
+QMAKE_CXXFLAGS+= -fopenmp -fopenmp-simd
+QMAKE_LFLAGS +=  -fopenmp -fopenmp-simd

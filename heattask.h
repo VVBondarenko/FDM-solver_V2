@@ -99,17 +99,17 @@ public:
         time += dt;
 
 
-        for(i=0;i<xSize;i++)
-        {
-            u[i][0]         = boundary_u(lx+i*hx,ly,time);
-            u[i][ySize-1]   = boundary_u(lx+i*hx,ry,time);
-        }
+//        for(i=0;i<xSize;i++)
+//        {
+//            u[i][0]         = boundary_u(lx+i*hx,ly,time);
+//            u[i][ySize-1]   = boundary_u(lx+i*hx,ry,time);
+//        }
 
-        for(i=0;i<ySize;i++)
-        {
-            u[0][i]       = boundary_u(lx,ly+i*hy,time);
-            u[xSize-1][i] = boundary_u(rx,ly+i*hy,time);
-        }
+//        for(i=0;i<ySize;i++)
+//        {
+//            u[0][i]       = boundary_u(lx,ly+i*hy,time);
+//            u[xSize-1][i] = boundary_u(rx,ly+i*hy,time);
+//        }
     }
 
     void StepInTime_Adams()
@@ -136,17 +136,17 @@ public:
 
         time += dt;
 
-        for(i=0;i<xSize;i++)
-        {
-            u[i][0]         = boundary_u(lx+i*hx,ly,time);
-            u[i][ySize-1]   = boundary_u(lx+i*hx,ry,time);
-        }
+//        for(i=0;i<xSize;i++)
+//        {
+//            u[i][0]         = boundary_u(lx+i*hx,ly,time);
+//            u[i][ySize-1]   = boundary_u(lx+i*hx,ry,time);
+//        }
 
-        for(i=0;i<ySize;i++)
-        {
-            u[0][i]       = boundary_u(lx,ly+i*hy,time);
-            u[xSize-1][i] = boundary_u(rx,ly+i*hy,time);
-        }
+//        for(i=0;i<ySize;i++)
+//        {
+//            u[0][i]       = boundary_u(lx,ly+i*hy,time);
+//            u[xSize-1][i] = boundary_u(rx,ly+i*hy,time);
+//        }
 
         for(i = 1; i < xSize-1; i++)
         {

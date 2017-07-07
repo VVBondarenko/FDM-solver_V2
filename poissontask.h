@@ -1,9 +1,13 @@
 #ifndef POISSONTASK_H
 #define POISSONTASK_H
 #include <iostream>
+extern "C"
+{
 #include <math.h>
+#include <string.h>
+}
 #include <gnuplointerface.h>
-
+#include <omp.h>
 
 class PoissonTask
 {
@@ -51,6 +55,12 @@ public:
     int PreviousPlotKind;
 };
 
+//extern "C" void CMemCpy(void *dest, void *src)
+//{
+//    memcpy(dest, src, sizeof(src));
+//}
+
+
 class PoissonTaskWDiscreteForce : public PoissonTask
 {
 public:
@@ -75,25 +85,44 @@ public:
         int i, j, K;
         for(K=0; K<n; K++)
         {
+            double **U, **Tmp_U;
+            U       = this->u;
+            Tmp_U   = this->tmp_u;
 
+#pragma omp parallel for collapse(2) //shared(U,Tmp_U) private(i,j)
             for(i = 1; i < xSize-1; i++)
             {
                 for(j = 1; j < ySize-1; j++)
                 {
-                    tmp_u[i][j] = ((u[i+1][j]+u[i-1][j])*hy*hy
-                                  +(u[i][j+1]+u[i][j-1])*hx*hx
-                                  - Force[i][j]*hx*hx*hy*hy)/2/(hx*hx+hy*hy);
+                    //                    Tmp_U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
+                    U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
+                                  +(U[i][j+1]+U[i][j-1])*hx*hx
+                                  - Force[i][j]*hx*hx*hy*hy)/2./(hx*hx+hy*hy);
                 }
             }
 
-            for(i = 1; i < xSize-1; i++)
-            {
-                for(j = 1; j < ySize-1; j++)
-                {
-                    u[i][j] = tmp_u[i][j];
-                }
-            }
+//#pragma omp parallel for collapse(2)
+//            for(i = 1; i < xSize-1; i++)
+//            {
+//                for(j = 1; j < ySize-1; j++)
+//                {
+//                    u[i][j] = tmp_u[i][j];
+//                }
+//            }
         }
+    }
+
+    double IterateWAutostop(int maxIters, double stop_criteria)
+    {
+        int i;
+        double current_err = 1.;
+        for(i=0;i<maxIters && current_err>stop_criteria && i>=0;i++)
+        {
+                this->Iterate(30);
+                current_err = this->EstimateConvolution();
+    //            printf("Iters\n");
+        }
+        return current_err;
     }
 };
 

@@ -36,13 +36,28 @@ PoissonTask::PoissonTask(double LX, double RX, double LY, double RY, int XSize, 
     for(i = 0; i < xSize; i++)
             u[i] = new double[ySize];
 
+//    u = (double**)malloc(xSize * sizeof(double*));
+//    for(i=0; i<xSize; i++)
+//        u[i] = (double*)malloc(ySize * sizeof(double));
+
+
     tmp_u = new double* [xSize];
     for(i = 0; i < xSize; i++)
         tmp_u[i] = new double[ySize];
 
+//    tmp_u = (double**)malloc(xSize * sizeof(double*));
+//    for(i=0; i<xSize; i++)
+//        tmp_u[i] = (double*)malloc(ySize * sizeof(double));
+
+
     u_err = new double* [xSize];
     for(i = 0; i < xSize; i++)
         u_err[i] = new double[ySize];
+
+//    u_err = (double**)malloc(xSize * sizeof(double*));
+//    for(i=0; i<xSize; i++)
+//        u_err[i] = (double*)malloc(ySize * sizeof(double));
+
 
     for(i=0;i<xSize;i++)
     {
@@ -109,7 +124,7 @@ double PoissonTask::IterateWAutostop(int maxIters, double stop_criteria)
     {
             this->Iterate(30);
             current_err = this->EstimateConvolution();
-            printf("Iters\n");
+//            printf("Iters\n");
     }
     return current_err;
 }
@@ -149,6 +164,45 @@ void PoissonTask::Plot(int Kind)
             script.push_back("set view map");
             script.push_back("load '../parula.pal'");
             script.push_back("splot \"result.dat\" using 1:2:3 with image");
+        }
+
+        if(Kind == 2)
+        {
+            script.push_back("unset surface");
+            script.push_back("set pm3d at s");
+            script.push_back("set palette rgbformulae 33,13,10");
+            script.push_back("set dgrid3d 65,65");
+            script.push_back("set contour");
+            script.push_back("set cntrparam levels incremental -2,0.02,2");
+            script.push_back("set zlabel  offset character 1, 0, 0 font "" textcolor lt -1 norotate");
+            script.push_back("set table '.temp'");
+            script.push_back("splot \"result.dat\" with line ls 7 palette notitle");
+            script.push_back("unset table");
+            script.push_back("reset");
+            script.push_back("set term wxt");
+            script.push_back("set view map");
+            script.push_back("plot \".temp\" with line lt -1");
+//            script.push_back("");
+//            script.push_back("load '../parula.pal'");
+//            script.push_back("splot \"result.dat\" using 1:2:3 with image");
+/*
+ *
+unset surface
+set pm3d at s
+set palette rgbformulae 33,13,10
+set dgrid3d 65,65
+set contour
+set cntrparam levels incremental -2,0.02,2
+set zlabel  offset character 1, 0, 0 font "" textcolor lt -1 norotate
+set table '.temp'
+splot "plot_region" with line ls 7 palette notitle
+unset table
+reset
+set term wxt
+set view map
+plot ".temp" with line lt -1
+ *
+ */
         }
 
         Graph.open();
@@ -211,7 +265,7 @@ double PoissonTask::ExactError()
 double PoissonTask::EstimateConvolution()
 {
     int i,j;
-    double maxErr;
+    double maxErr = 0.;
     for(i = 1; i < xSize-1; i++)
     {
         for(j = 1; j < ySize-1; j++)

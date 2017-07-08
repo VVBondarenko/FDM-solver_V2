@@ -85,9 +85,9 @@ public:
         int i, j, K;
         for(K=0; K<n; K++)
         {
-            double **U, **Tmp_U;
+            double **U/*, **Tmp_U*/;
             U       = this->u;
-            Tmp_U   = this->tmp_u;
+//            Tmp_U   = this->tmp_u;
 
 #pragma omp parallel for collapse(2) //shared(U,Tmp_U) private(i,j)
             for(i = 1; i < xSize-1; i++)
@@ -115,11 +115,14 @@ public:
     double IterateWAutostop(int maxIters, double stop_criteria)
     {
         int i;
-        double current_err = 1.;
+        double current_err = 1., prev_err = 2.;
         for(i=0;i<maxIters && current_err>stop_criteria && i>=0;i++)
         {
-                this->Iterate(30);
-                current_err = this->EstimateConvolution();
+            this->Iterate(30);
+            prev_err = current_err;
+            current_err = this->EstimateConvolution();
+            if(fabs(prev_err-current_err)/prev_err<1.+1e-9)
+                break;
     //            printf("Iters\n");
         }
         return current_err;

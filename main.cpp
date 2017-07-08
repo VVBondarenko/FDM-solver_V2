@@ -132,7 +132,12 @@ double f(double t, double p)
 
 double streamBoundary(double x, double y)
 {
-    return f(x-2./3.*y, 1./3.);
+    //изогнутый канал
+//    return f(x-y, 1./3.);
+//    return f(x - (2.5*y - 0.5)/3.,1./3.);
+    //течение Пуазейля
+    return f((y+1.)/2.,1.);
+//    return y;
 }
 
 int main()
@@ -142,14 +147,15 @@ int main()
     //  Теплопроводность - уравнение переноса вихря
     int i,j;
 
-    int Nx = 64, Ny = 64;
+    int     Nx = 64,
+            Ny = 64;
     PoissonTaskWDiscreteForce *StreamFunc = new PoissonTaskWDiscreteForce(-1.,1.,
                                                                           -1.,1.,
                                                                           Nx,Ny);
     HeatTaskWDiscreteForce *CurlFunc = new HeatTaskWDiscreteForce(-1.,1.,
                                                                   -1.,1.,
                                                                   Nx,Ny,
-                                                                  0.00001,1./5.);
+                                                                  0.002,1./20.);
     double **vx, **vy;
     vx = new double* [Nx];
     vy = new double* [Nx];
@@ -169,66 +175,117 @@ int main()
     //заполнение ГУ для функции тока
     for(i=0; i<Nx; i++)
     {
-        StreamFunc->u[i][0]     =   streamBoundary((-1.+StreamFunc->hx*i), -1.);
-        StreamFunc->u[i][Ny-1]  =   streamBoundary((-1.+StreamFunc->hx*i),  1.);
+        StreamFunc->u[i][0]     =   streamBoundary((StreamFunc->lx+StreamFunc->hx*i), StreamFunc->ly);
+        StreamFunc->u[i][Ny-1]  =   streamBoundary((StreamFunc->lx+StreamFunc->hx*i), StreamFunc->ry);
     }
     for(i=0; i<Ny; i++)
     {
-        StreamFunc->u[0][i]    =   streamBoundary(-1.,(-1.+StreamFunc->hx*i));
-        StreamFunc->u[Nx-1][i] =   streamBoundary( 1.,(-1.+StreamFunc->hx*i));
+        StreamFunc->u[0][i]    =   streamBoundary(StreamFunc->lx,(StreamFunc->ly+StreamFunc->hy*i));
+        StreamFunc->u[Nx-1][i] =   streamBoundary(StreamFunc->rx,(StreamFunc->ly+StreamFunc->hy*i));
     }
 
-    //получаем начальное приближение для уравнения Пуассона
-    StreamFunc->IterateWAutostop(100,1e-8);
-    StreamFunc->Plot(1);
-    system("sleep 10");
-
+    //получаем начальное приближение для уравнения Пуассона (а надо ли?..)
+//    StreamFunc->IterateWAutostop(200,1e-8);
     for(i=1;i<Nx-1;i++)
         for(j=1;j<Ny-1;j++)
-        {
-            vx[i][j] =  (StreamFunc->u[i][j+1]-StreamFunc->u[i][j-1])/StreamFunc->hy*0.5;
-            vy[i][j] = -(StreamFunc->u[i+1][j]-StreamFunc->u[i-1][j])/StreamFunc->hx*0.5;
-        }
+            StreamFunc->u[i][j] = streamBoundary(StreamFunc->lx+i*StreamFunc->hx,
+                                                 StreamFunc->ly+j*StreamFunc->hy);
+//    StreamFunc->Plot(2);
+//    system("sleep 2");
+//    StreamFunc->ClosePlot();
 
-    //сетаем начальное распределение для уравнения переноса вихря (+ГУ) (+переносная сила)
+    int k;
     for(i=1; i<Nx-1; i++)
-    {
         for(j=1; j<Ny-1; j++)
-        {
-            CurlFunc->u[i][j] = - ((StreamFunc->u[i+1][j]-2.*StreamFunc->u[i][j]+StreamFunc->u[i-1][j])/StreamFunc->hx/StreamFunc->hx+
-                                   (StreamFunc->u[i][j+1]-2.*StreamFunc->u[i][j]+StreamFunc->u[i][j-1])/StreamFunc->hy/StreamFunc->hy);
-        }
-    }
+            CurlFunc->u[i][j] =   -((StreamFunc->u[i+1][j]-2.*StreamFunc->u[i][j]+StreamFunc->u[i-1][j])/StreamFunc->hx/StreamFunc->hx+
+                                    (StreamFunc->u[i][j+1]-2.*StreamFunc->u[i][j]+StreamFunc->u[i][j-1])/StreamFunc->hy/StreamFunc->hy);
     for(i=0; i<Nx; i++)
     {
         CurlFunc->u[i][0]    = CurlFunc->u[i][1];
-        CurlFunc->u[i][Nx-1] = CurlFunc->u[i][Nx-2];
+        CurlFunc->u[i][Ny-1] = CurlFunc->u[i][Ny-2];
     }
+
     for(i=0; i<Ny; i++)
     {
         CurlFunc->u[0][i]    = CurlFunc->u[1][i];
-        CurlFunc->u[Ny-1][i] = CurlFunc->u[Nx-2][i];
+        CurlFunc->u[Nx-1][i] = CurlFunc->u[Nx-2][i];
     }
 
-    for(i=1;i<Nx-1;i++)
-        for(j=1;j<Ny-1;j++)
+    for(k=0;k<800;k++)
+    {
+        //получаем поле скоростей по предыдущему виду функции тока
+#pragma omp parallel for collapse(2)
+        for(i=1;i<Nx-1;i++)
+            for(j=1;j<Ny-1;j++)
+            {
+                vx[i][j] =  (StreamFunc->u[i][j+1]-StreamFunc->u[i][j-1])/StreamFunc->hy*0.5;
+                vy[i][j] = -(StreamFunc->u[i+1][j]-StreamFunc->u[i-1][j])/StreamFunc->hx*0.5;
+            }
+
+
+        //сетаем начальное распределение для уравнения переноса вихря
+        //ГУ для уравнения переноса вихря
+        for(i=1; i<Nx-1; i++)
         {
-            CurlFunc->Force[i][j] = -(vx[i][j]*(CurlFunc->u[i-1][j]-CurlFunc->u[i+1][j])/CurlFunc->hx +
-                                      vy[i][j]*(CurlFunc->u[i][j+1]-CurlFunc->u[i][j-1])/CurlFunc->hy);
+            StreamFunc->u[i][1]     = StreamFunc->u[i][0];
+            StreamFunc->u[i][Ny-2]  = StreamFunc->u[i][Ny-1];
+
+
+            CurlFunc->u[i][0]    = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
+            CurlFunc->u[i][Ny-1] = -(StreamFunc->u[i][Ny-1] -2.*StreamFunc->u[i][Ny-2]  +StreamFunc->u[i][Ny-3] )/StreamFunc->hy/StreamFunc->hy;
+        } //условия на границе твёрдого тела
+
+        for(i=1; i<Ny-1; i++)
+        {
+            CurlFunc->u[0][i]    = //-(StreamFunc->u[0][i]        -2.*StreamFunc->u[1][i]   +StreamFunc->u[2][i]      )/StreamFunc->hx/StreamFunc->hx
+                                   -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
+            CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
+                                   -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
+        } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
+
+        int CurlTimeIterator = 0;
+        for(CurlTimeIterator = 0; CurlTimeIterator < 1; CurlTimeIterator++) //интегрирование уравнения переноса вихря по времени
+        {
+            //переносная сила для вихря (форма, соотвующая субстанционной производной)
+//#pragma omp parallel for collapse(2)
+//            for(i=1;i<Nx-1;i++)
+//                for(j=1;j<Ny-1;j++)
+//                    CurlFunc->Force[i][j] = -(vx[i][j]*(CurlFunc->u[i+1][j]-CurlFunc->u[i-1][j])/CurlFunc->hx +
+//                            vy[i][j]*(CurlFunc->u[i][j+1]-CurlFunc->u[i][j-1])/CurlFunc->hy)*0.5;
+
+            //переносная сила для вихря в консервативной форме
+#pragma omp parallel for collapse(2)
+            for(i=1;i<Nx-1;i++)
+                for(j=1;j<Ny-1;j++)
+                    CurlFunc->Force[i][j] =
+                            -((CurlFunc->u[i+1][j]*vx[i+1][j]-CurlFunc->u[i-1][j]*vx[i-1][j])/CurlFunc->hx +
+                              (CurlFunc->u[i][j+1]*vy[i][j+1]-CurlFunc->u[i][j-1]*vy[i][j-1])/CurlFunc->hy)*0.5;
+
+            if(k==0 && CurlTimeIterator == 0)
+                CurlFunc->StepInTime_Euler();
+            else
+                CurlFunc->StepInTime_Adams();
         }
 
-    //итерируем по времени
-    CurlFunc->StepInTime_Euler();
-    //обновляем решение уравнения Пуассона
-    //  а вот тут возможны нюансы... решено
-    for(i=1;i<Nx-1;i++)
-        for(j=1;j<Ny-1;j++)
+        //обновляем вихревое возмущение для ФТ, а потом и её саму
+#pragma omp parallel for collapse(2)
+        for(i=1;i<Nx-1;i++)
+            for(j=1;j<Ny-1;j++)
+            {
+                StreamFunc->Force[i][j] = -CurlFunc->u[i][j];
+            }
+        StreamFunc->IterateWAutostop(50,1e-8);
+//        StreamFunc->Plot(2);
+        if(k%100==0)
         {
-            StreamFunc->Force[i][j] = -CurlFunc->u[i][j];
+            CurlFunc->Plot(1);
+            printf("updated\n");
+            system("sleep 0.1");
         }
-    StreamFunc->IterateWAutostop(100,1e-8);
+        //        StreamFunc->ClosePlot();
+    }
     StreamFunc->Plot(1);
-    system("sleep 10");
+    system("sleep 3");
 
     return 0;
 }

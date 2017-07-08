@@ -132,14 +132,14 @@ double f(double t, double p)
 
 double streamBoundary(double x, double y)
 {
-    //изогнутый канал
-//    return f(x-y, 1./3.);
-//    return f(x - (2.5*y - 0.5)/3.,1./3.);
     //течение Пуазейля
 //    return f((y+1.)/2.,1.);
 //    return y;
     //течение в каверне
-    return 0.*x*y;
+//    return 0.*x*y;
+    //течение Куэтта
+    return 8./3.*f((y+1.)/4.,1.);
+//    return 8./3.*f((y+1.)/2.,1.);
 }
 
 int main()
@@ -149,15 +149,15 @@ int main()
     //  Теплопроводность - уравнение переноса вихря
     int i,j;
 
-    int     Nx = 128,
-            Ny = 128;
+    int     Nx = 64,
+            Ny = 64;
     PoissonTaskWDiscreteForce *StreamFunc = new PoissonTaskWDiscreteForce(-1.,1.,
                                                                           -1.,1.,
                                                                           Nx,Ny);
     HeatTaskWDiscreteForce *CurlFunc = new HeatTaskWDiscreteForce(-1.,1.,
                                                                   -1.,1.,
                                                                   Nx,Ny,
-                                                                  0.0001,1./100.);
+                                                                  0.002,1./20.);
     double **vx, **vy;
     vx = new double* [Nx];
     vy = new double* [Nx];
@@ -213,7 +213,7 @@ int main()
         CurlFunc->u[Nx-1][i] = CurlFunc->u[Nx-2][i];
     }
 
-    for(k=0;k<2500;k++)
+    for(k=0;k<2000;k++)
     {
         //получаем поле скоростей по предыдущему виду функции тока
 #pragma omp parallel for collapse(2)
@@ -247,8 +247,7 @@ int main()
         } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
 */
 
-/*
-        //ГУ для течения в каверне
+/*      //ГУ для течения в каверне
         //
         for(i=1; i<Nx-1; i++)
         {
@@ -268,6 +267,26 @@ int main()
             CurlFunc->u[Nx-1][i] = -(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx;
         }
 */
+
+        //ГУ для течения Куэтта
+        //
+        for(i=1; i<Nx-1; i++)
+        {
+            StreamFunc->u[i][1]     = StreamFunc->u[i][0];
+            StreamFunc->u[i][Ny-2]  = StreamFunc->u[i][Ny-1]-StreamFunc->hy;
+
+            CurlFunc->u[i][0]    = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
+            CurlFunc->u[i][Ny-1] = -(StreamFunc->u[i][Ny-1] -2.*StreamFunc->u[i][Ny-2]  +StreamFunc->u[i][Ny-3] )/StreamFunc->hy/StreamFunc->hy;
+        }//два твёрдых тела, верхнее - подвижное, нижнее - покоится
+
+        for(i=1; i<Ny-1; i++)
+        {
+            CurlFunc->u[0][i]    = //-(StreamFunc->u[0][i]        -2.*StreamFunc->u[1][i]   +StreamFunc->u[2][i]      )/StreamFunc->hx/StreamFunc->hx
+                                   -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
+            CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
+                                   -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
+        }//сток и исток, профили заданы...
+
 
         int CurlTimeIterator = 0;
         for(CurlTimeIterator = 0; CurlTimeIterator < 1; CurlTimeIterator++) //интегрирование уравнения переноса вихря по времени

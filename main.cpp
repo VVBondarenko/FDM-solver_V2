@@ -133,12 +133,12 @@ double f(double t, double p)
 double streamBoundary(double x, double y)
 {
     //течение Пуазейля
-//    return f((y+1.)/2.,1.);
+    return f((y+1.)/2.,1.);
 //    return y;
     //течение в каверне
 //    return 0.*x*y;
     //течение Куэтта
-    return 8./3.*f((y+1.)/4.,1.);
+//    return 8./3.*f((y+1.)/4.,1.);
 //    return 8./3.*f((y+1.)/2.,1.);
 }
 
@@ -179,11 +179,30 @@ int main()
     {
         StreamFunc->u[i][0]     =   streamBoundary((StreamFunc->lx+StreamFunc->hx*i), StreamFunc->ly);
         StreamFunc->u[i][Ny-1]  =   streamBoundary((StreamFunc->lx+StreamFunc->hx*i), StreamFunc->ry);
+
+        StreamFunc->NodeState[i][1] = 1;
+        StreamFunc->NodeState[i][Ny-2] = 1;
+
+//        vx[i][Ny-1] = 1.;
+
     }
     for(i=0; i<Ny; i++)
     {
         StreamFunc->u[0][i]    =   streamBoundary(StreamFunc->lx,(StreamFunc->ly+StreamFunc->hy*i));
         StreamFunc->u[Nx-1][i] =   streamBoundary(StreamFunc->rx,(StreamFunc->ly+StreamFunc->hy*i));
+
+        StreamFunc->NodeState[1][i] = 1;
+        StreamFunc->NodeState[Nx-2][i] = 1;
+
+
+        if(i>2*Ny/5 && i<3*Ny/5)    //условия для пластинки в потоке
+        {
+            StreamFunc->NodeState[Nx/4][i] = 1;
+            StreamFunc->u[Nx/4][i] = 0.5;
+        }
+
+        vx[0][i]    = 1.;
+        vx[Nx-1][i] = 1.;
     }
 
     //получаем начальное приближение для уравнения Пуассона (а надо ли?..)
@@ -213,7 +232,7 @@ int main()
         CurlFunc->u[Nx-1][i] = CurlFunc->u[Nx-2][i];
     }
 
-    for(k=0;k<2000;k++)
+    for(k=0;k<8000;k++)
     {
         //получаем поле скоростей по предыдущему виду функции тока
 #pragma omp parallel for collapse(2)
@@ -244,6 +263,14 @@ int main()
                                    -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
             CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
                                    -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
+
+//            if(i>2*Ny/5 && i<3*Ny/5)
+//            {
+//                StreamFunc->NodeState[Nx/4][i] = 1;
+//                StreamFunc->u[Nx/4][i] = 0.5;
+//                CurlFunc->u[Nx/4][i]    = -(StreamFunc->u[Nx/4-1][i] -2.*StreamFunc->u[Nx/4][i] +StreamFunc->u[Nx/4+1][i])/StreamFunc->hx/StreamFunc->hx;
+//            }
+
         } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
 */
 
@@ -268,7 +295,7 @@ int main()
         }
 */
 
-        //ГУ для течения Куэтта
+/*      //ГУ для течения Куэтта
         //
         for(i=1; i<Nx-1; i++)
         {
@@ -286,6 +313,34 @@ int main()
             CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
                                    -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
         }//сток и исток, профили заданы...
+*/
+
+        //ГУ для пластинки в потоке
+          for(i=1; i<Nx-1; i++)
+          {
+              StreamFunc->u[i][1]     = StreamFunc->u[i][0];
+              StreamFunc->u[i][Ny-2]  = StreamFunc->u[i][Ny-1];
+
+
+              CurlFunc->u[i][0]    = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
+              CurlFunc->u[i][Ny-1] = -(StreamFunc->u[i][Ny-1] -2.*StreamFunc->u[i][Ny-2]  +StreamFunc->u[i][Ny-3] )/StreamFunc->hy/StreamFunc->hy;
+          } //условия на границе твёрдого тела
+
+          for(i=1; i<Ny-1; i++)
+          {
+              CurlFunc->u[0][i]    = //-(StreamFunc->u[0][i]        -2.*StreamFunc->u[1][i]   +StreamFunc->u[2][i]      )/StreamFunc->hx/StreamFunc->hx
+                                     -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
+              CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
+                                     -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
+
+              if(i>2*Ny/5 && i<3*Ny/5)
+              {
+                  StreamFunc->NodeState[Nx/4][i] = 1;
+                  StreamFunc->u[Nx/4][i] = 0.5;
+                  CurlFunc->u[Nx/4][i]    = -(StreamFunc->u[Nx/4-1][i] -2.*StreamFunc->u[Nx/4][i] +StreamFunc->u[Nx/4+1][i])/StreamFunc->hx/StreamFunc->hx;
+              }
+
+          } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
 
 
         int CurlTimeIterator = 0;
@@ -334,12 +389,42 @@ int main()
 
     FILE *velocityValue;
     velocityValue = fopen("velocity.dat","w");
+    fprintf(velocityValue,"TITLE = \"Flow Model\"\n");
+    fprintf(velocityValue,"VARIABLES = \"x\", \"y\", \"v_x\", \"v_y\"\n");
+    fprintf(velocityValue,"ZONE T=\"Frame 0\", I=%d, J=%d\n", Ny, Nx);
 
     for(i=0;i<Nx;i++)
         for(j=0;j<Ny;j++)
-            fprintf(velocityValue,"%f %f %f\n",StreamFunc->hx*i+StreamFunc->lx,
-                                               StreamFunc->hy*j+StreamFunc->ly,
-                                               sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
+            fprintf(velocityValue,"%f %f %f %f\n",StreamFunc->hx*i+StreamFunc->lx,
+                                                         StreamFunc->hy*j+StreamFunc->ly,
+                                                         vx[i][j], vy[i][j]);
+                                               //sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
     fclose(velocityValue);
     return 0;
 }
+/*
+    fprintf(velocityValue,"# vtk DataFile Version 2.0\nsimple plot");
+    fprintf(velocityValue,"ASCII\nDATASET RECTILINEAR_GRID\n");
+    fprintf(velocityValue,"DIMENSIONS %d %d %d\n", Nx, Ny, 1);
+
+    fprintf(velocityValue,"X_COORDINATES %d float\n", Nx);
+    for(i=0;i<Nx;i++)
+        fprintf(velocityValue,"%f\n",StreamFunc->hx*i+StreamFunc->lx);
+
+    fprintf(velocityValue,"Y_COORDINATES %d float\n", Ny);
+    for(i=0;i<Ny;i++)
+        fprintf(velocityValue,"%f\n",StreamFunc->hy*i+StreamFunc->ly);
+
+    fprintf(velocityValue,"Z_COORDINATES %d float\n", 1);
+    fprintf(velocityValue,"%f\n",0.);
+
+    fprintf(velocityValue,"POINT_DATA %d\n", Nx*Ny);
+//    fprintf(velocityValue,"VECTORS velocity float\n");
+    fprintf(velocityValue,"SCALARS streamFunc float 1\nLOOKUP_TABLE default");
+
+    for(i=0;i<Nx;i++)
+        for(j=0;j<Ny;j++)
+//            fprintf(velocityValue,"%f %f 0.0\n", vx[i][j], vy[i][j]);
+    fprintf(velocityValue,"%f\n", StreamFunc->u[i][j]);
+                                               //sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
+*/

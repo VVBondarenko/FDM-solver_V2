@@ -71,15 +71,28 @@ public:
                                                                   XSize,YSize)
     {
         int i, j;
+
         Force = new double* [xSize];
         for(i = 0; i < xSize; i++)
-                Force[i] = new double[ySize];
+            Force[i] = new double[ySize];
+
+        NodeState = new int* [xSize];
+        for(i=0;i<xSize;i++)
+            NodeState[i] = new int[ySize];
+
         for(i=0;i<xSize;i++)
             for(j=0;j<ySize;j++)
+            {
                 Force[i][j] = 0.;
+                NodeState[i][j]=0.;
+            }
     }
 
     double **Force;
+    int **NodeState;
+
+
+
     void Iterate(int n)
     {
         int i, j, K;
@@ -95,7 +108,8 @@ public:
                 for(j = 1; j < ySize-1; j++)
                 {
                     //                    Tmp_U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
-                    U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
+                    if(NodeState[i][j]==0)
+                        U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
                                   +(U[i][j+1]+U[i][j-1])*hx*hx
                                   - Force[i][j]*hx*hx*hy*hy)/2./(hx*hx+hy*hy);
                 }

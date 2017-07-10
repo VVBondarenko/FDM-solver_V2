@@ -15,8 +15,6 @@ using namespace std;
  *
  *  add normal error control
  *  add selectivity to multy-resolution
- *  add inner boundaries with conditions
- *  fix bug in animation
  *
  */
 
@@ -149,15 +147,15 @@ int main()
     //  Теплопроводность - уравнение переноса вихря
     int i,j;
 
-    int     Nx = 64,
-            Ny = 64;
+    int     Nx = 128,
+            Ny = 128;
     PoissonTaskWDiscreteForce *StreamFunc = new PoissonTaskWDiscreteForce(-1.,1.,
                                                                           -1.,1.,
                                                                           Nx,Ny);
     HeatTaskWDiscreteForce *CurlFunc = new HeatTaskWDiscreteForce(-1.,1.,
                                                                   -1.,1.,
                                                                   Nx,Ny,
-                                                                  0.002,1./20.);
+                                                                  0.0001,/*1./20.*/3./520.);
     double **vx, **vy;
     vx = new double* [Nx];
     vy = new double* [Nx];
@@ -180,8 +178,8 @@ int main()
         StreamFunc->u[i][0]     =   streamBoundary((StreamFunc->lx+StreamFunc->hx*i), StreamFunc->ly);
         StreamFunc->u[i][Ny-1]  =   streamBoundary((StreamFunc->lx+StreamFunc->hx*i), StreamFunc->ry);
 
-        StreamFunc->NodeState[i][1] = 1;
-        StreamFunc->NodeState[i][Ny-2] = 1;
+//        StreamFunc->NodeState[i][1] = 1;
+//        StreamFunc->NodeState[i][Ny-2] = 1;
 
 //        vx[i][Ny-1] = 1.;
 
@@ -191,26 +189,40 @@ int main()
         StreamFunc->u[0][i]    =   streamBoundary(StreamFunc->lx,(StreamFunc->ly+StreamFunc->hy*i));
         StreamFunc->u[Nx-1][i] =   streamBoundary(StreamFunc->rx,(StreamFunc->ly+StreamFunc->hy*i));
 
-        StreamFunc->NodeState[1][i] = 1;
-        StreamFunc->NodeState[Nx-2][i] = 1;
+//        StreamFunc->NodeState[1][i] = 1;
+//        StreamFunc->NodeState[Nx-2][i] = 1;
 
 
-        if(i>2*Ny/5 && i<3*Ny/5)    //условия для пластинки в потоке
-        {
-            StreamFunc->NodeState[Nx/4][i] = 1;
-            StreamFunc->u[Nx/4][i] = 0.5;
-        }
+//        if(i>2*Ny/5 && i<3*Ny/5)    //условия для пластинки в потоке
+//        {
+//            StreamFunc->NodeState[Nx/4][i] = 1;
+//            StreamFunc->u[Nx/4][i] = 0.5;
+//        }
 
-        vx[0][i]    = 1.;
-        vx[Nx-1][i] = 1.;
+        vx[0][i]    = (streamBoundary(StreamFunc->lx,
+                                      StreamFunc->ly+i*StreamFunc->hy+1e-8)
+                      -streamBoundary(StreamFunc->lx,
+                                      StreamFunc->ly+i*StreamFunc->hy-1e-8))/2.e-8;
+        vx[Nx-1][i] = (streamBoundary(StreamFunc->rx,
+                                      StreamFunc->ly+i*StreamFunc->hy+1e-8)
+                      -streamBoundary(StreamFunc->rx,
+                                      StreamFunc->ly+i*StreamFunc->hy-1e-8))/2.e-8;
     }
 
     //получаем начальное приближение для уравнения Пуассона (а надо ли?..)
 //    StreamFunc->IterateWAutostop(200,1e-8);
     for(i=1;i<Nx-1;i++)
         for(j=1;j<Ny-1;j++)
+        {
             StreamFunc->u[i][j] = streamBoundary(StreamFunc->lx+i*StreamFunc->hx,
                                                  StreamFunc->ly+j*StreamFunc->hy);
+            if((StreamFunc->lx+i*StreamFunc->hx+0.5)*(StreamFunc->lx+i*StreamFunc->hx+0.5)
+              +(StreamFunc->ly+j*StreamFunc->hy)*(StreamFunc->ly+j*StreamFunc->hy)<0.04)
+            {
+                StreamFunc->NodeState[i][j] = 1;
+                StreamFunc->u[i][j] = 0.5;
+            }
+        }
 //    StreamFunc->Plot(2);
 //    system("sleep 2");
 //    StreamFunc->ClosePlot();
@@ -232,7 +244,7 @@ int main()
         CurlFunc->u[Nx-1][i] = CurlFunc->u[Nx-2][i];
     }
 
-    for(k=0;k<8000;k++)
+    for(k=0;k<12000;k++)
     {
         //получаем поле скоростей по предыдущему виду функции тока
 #pragma omp parallel for collapse(2)
@@ -315,32 +327,33 @@ int main()
         }//сток и исток, профили заданы...
 */
 
-        //ГУ для пластинки в потоке
-          for(i=1; i<Nx-1; i++)
-          {
-              StreamFunc->u[i][1]     = StreamFunc->u[i][0];
-              StreamFunc->u[i][Ny-2]  = StreamFunc->u[i][Ny-1];
+        //ГУ для пластинки в потоке (вертикальная)
+        for(i=1; i<Nx-1; i++)
+        {
+            StreamFunc->u[i][1]     = StreamFunc->u[i][0];
+            StreamFunc->u[i][Ny-2]  = StreamFunc->u[i][Ny-1];
 
 
-              CurlFunc->u[i][0]    = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
-              CurlFunc->u[i][Ny-1] = -(StreamFunc->u[i][Ny-1] -2.*StreamFunc->u[i][Ny-2]  +StreamFunc->u[i][Ny-3] )/StreamFunc->hy/StreamFunc->hy;
-          } //условия на границе твёрдого тела
+            CurlFunc->u[i][0]    = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
+            CurlFunc->u[i][Ny-1] = -(StreamFunc->u[i][Ny-1] -2.*StreamFunc->u[i][Ny-2]  +StreamFunc->u[i][Ny-3] )/StreamFunc->hy/StreamFunc->hy;
+        } //условия на границе твёрдого тела
 
-          for(i=1; i<Ny-1; i++)
-          {
-              CurlFunc->u[0][i]    = //-(StreamFunc->u[0][i]        -2.*StreamFunc->u[1][i]   +StreamFunc->u[2][i]      )/StreamFunc->hx/StreamFunc->hx
-                                     -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
-              CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
-                                     -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
+        for(i=1; i<Ny-1; i++)
+        {
+            CurlFunc->u[0][i]    = //-(StreamFunc->u[0][i]        -2.*StreamFunc->u[1][i]   +StreamFunc->u[2][i]      )/StreamFunc->hx/StreamFunc->hx
+                    -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
+            CurlFunc->u[Nx-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
+                    -(StreamFunc->u[Nx-1][i+1]   -2.*StreamFunc->u[Nx-1][i]+StreamFunc->u[Nx-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
+        } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
 
-              if(i>2*Ny/5 && i<3*Ny/5)
-              {
-                  StreamFunc->NodeState[Nx/4][i] = 1;
-                  StreamFunc->u[Nx/4][i] = 0.5;
-                  CurlFunc->u[Nx/4][i]    = -(StreamFunc->u[Nx/4-1][i] -2.*StreamFunc->u[Nx/4][i] +StreamFunc->u[Nx/4+1][i])/StreamFunc->hx/StreamFunc->hx;
-              }
-
-          } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
+        for(i = 1; i < Nx-1; i++)
+            for( j = 1; j< Ny-1; j++)
+                if(StreamFunc->NodeState[i][j]==1)
+                {
+                    StreamFunc->u[i][j] = 0.5;
+                    CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/StreamFunc->hx/StreamFunc->hx
+                                            -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/StreamFunc->hy/StreamFunc->hy;
+                }//условия на твёрдые тела внутри потока
 
 
         int CurlTimeIterator = 0;

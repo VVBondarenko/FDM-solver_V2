@@ -105,10 +105,11 @@ public:
 #pragma omp parallel for collapse(2) //shared(U,Tmp_U) private(i,j)
             for(i = 1; i < xSize-1; i++)
             {
+//#pragma GCC ivdep
                 for(j = 1; j < ySize-1; j++)
                 {
-                    //                    Tmp_U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
                     if(NodeState[i][j]==0)
+//                        Tmp_U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
                         U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
                                   +(U[i][j+1]+U[i][j-1])*hx*hx
                                   - Force[i][j]*hx*hx*hy*hy)/2./(hx*hx+hy*hy);
@@ -116,11 +117,13 @@ public:
             }
 
 //#pragma omp parallel for collapse(2)
+//#pragma GCC ivdep
 //            for(i = 1; i < xSize-1; i++)
 //            {
 //                for(j = 1; j < ySize-1; j++)
 //                {
-//                    u[i][j] = tmp_u[i][j];
+//                    if(NodeState[i][j]==0)
+//                        U[i][j] = Tmp_U[i][j];
 //                }
 //            }
         }

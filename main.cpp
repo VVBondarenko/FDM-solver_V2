@@ -3,10 +3,10 @@
 //#include <stdlib.h>
 //#include <math.h>
 
-#include <poissontask.h>
-#include <heattask.h>
+//#include <poissontask.h>
+//#include <heattask.h>
 //#include <gnuplointerface.h>
-
+#include <cfdproblem.h>
 
 using namespace std;
 
@@ -139,13 +139,33 @@ double streamBoundary(double x, double y)
 //    return 8./3.*f((y+1.)/4.,1.);
 //    return 8./3.*f((y+1.)/2.,1.);
 }
+double bodyRfunc_airfoil(double X, double Y, double theta)
+{
+    //theta - ange of attack
+    double x = cos(theta)*X-sin(theta)*Y+0.333333,
+           y = sin(theta)*X+cos(theta)*Y;
 
-int main()
+    if(x<0)
+        return -1.;
+    double temp = 0.2969*sqrt(x)+ x*(-0.126 + x*(-0.3516 + (0.2843 - 0.1015*x)*x));
+    return 1.5*temp - sqrt(pow(0.75*temp-y,2) + pow(0.75*temp + y,2));
+}
+
+double bodyRfunc(double X, double Y, double theta)
+{
+    return 0.04-((X+0.5)*(X+0.5)+Y*Y);
+}
+
+int main_CFD_test()
 {
     //объявление задачи для Пуассона и Теплопроводности
     //  Пуассона - начальное приближение для задачи обтекания невязкой несжимаемой
     //  Теплопроводность - уравнение переноса вихря
     int i,j;
+
+
+
+
 
     int     Nx = 128,
             Ny = 128;
@@ -170,7 +190,6 @@ int main()
             vx[i][j] = 0.;
             vy[i][j] = 0.;
         }
-
 
     //заполнение ГУ для функции тока
     for(i=0; i<Nx; i++)
@@ -216,8 +235,9 @@ int main()
         {
             StreamFunc->u[i][j] = streamBoundary(StreamFunc->lx+i*StreamFunc->hx,
                                                  StreamFunc->ly+j*StreamFunc->hy);
-            if((StreamFunc->lx+i*StreamFunc->hx+0.5)*(StreamFunc->lx+i*StreamFunc->hx+0.5)
-              +(StreamFunc->ly+j*StreamFunc->hy)*(StreamFunc->ly+j*StreamFunc->hy)<0.04)
+            if(bodyRfunc((StreamFunc->lx+i*StreamFunc->hx),
+                         (StreamFunc->ly+j*StreamFunc->hy     ),
+                         M_PI/180.*30.) > 0.)
             {
                 StreamFunc->NodeState[i][j] = 1;
                 StreamFunc->u[i][j] = 0.5;
@@ -227,7 +247,6 @@ int main()
 //    system("sleep 2");
 //    StreamFunc->ClosePlot();
 
-    int k;
     for(i=1; i<Nx-1; i++)
         for(j=1; j<Ny-1; j++)
             CurlFunc->u[i][j] =   -((StreamFunc->u[i+1][j]-2.*StreamFunc->u[i][j]+StreamFunc->u[i-1][j])/StreamFunc->hx/StreamFunc->hx+
@@ -244,10 +263,12 @@ int main()
         CurlFunc->u[Nx-1][i] = CurlFunc->u[Nx-2][i];
     }
 
+    int k;
     for(k=0;k<12000;k++)
     {
         //получаем поле скоростей по предыдущему виду функции тока
-#pragma omp parallel for collapse(2)
+
+
         for(i=1;i<Nx-1;i++)
             for(j=1;j<Ny-1;j++)
             {
@@ -328,6 +349,7 @@ int main()
 */
 
         //ГУ для пластинки в потоке (вертикальная)
+
         for(i=1; i<Nx-1; i++)
         {
             StreamFunc->u[i][1]     = StreamFunc->u[i][0];
@@ -367,7 +389,6 @@ int main()
 //                            vy[i][j]*(CurlFunc->u[i][j+1]-CurlFunc->u[i][j-1])/CurlFunc->hy)*0.5;
 
             //переносная сила для вихря в консервативной форме
-#pragma omp parallel for collapse(2)
             for(i=1;i<Nx-1;i++)
                 for(j=1;j<Ny-1;j++)
                     CurlFunc->Force[i][j] =
@@ -381,7 +402,6 @@ int main()
         }
 
         //обновляем вихревое возмущение для ФТ, а потом и её саму
-#pragma omp parallel for collapse(2)
         for(i=1;i<Nx-1;i++)
             for(j=1;j<Ny-1;j++)
             {
@@ -413,6 +433,7 @@ int main()
                                                          vx[i][j], vy[i][j]);
                                                //sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
     fclose(velocityValue);
+
     return 0;
 }
 /*
@@ -441,3 +462,48 @@ int main()
     fprintf(velocityValue,"%f\n", StreamFunc->u[i][j]);
                                                //sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
 */
+
+class CFDairfoil : public CFDProblem
+{
+
+public:
+    CFDairfoil(double LX, double RX,
+               double LY, double RY,
+               int XSize, int YSize,
+               double dt, double Nu) : CFDProblem(LX,RX,LY,RY,XSize,YSize,dt,Nu)
+    {
+
+    }
+
+    virtual double profileRfunc(double x, double y, double theta)
+    {
+        double X = cos(theta)*x-sin(theta)*y+0.54,
+               Y = sin(theta)*x+cos(theta)*y;
+
+        if(X<0)
+            return -1.;
+        double temp = 0.2969*sqrt(X)+ X*(-0.126 + X*(-0.3516 + (0.2843 - 0.1015*X)*X));
+        return 1.5*temp - sqrt(pow(0.75*temp-Y,2) + pow(0.75*temp + Y,2));
+    }
+};
+
+int main()
+{
+    CFDProblem *Test = new CFDairfoil(-1.,3.,
+                                      -1.,1.,
+                                      128, 64,
+                                      1e-4,3./520.);
+    Test->SetInitialConditions(25.);
+    int k;
+    char name[50];
+    for(k=0; k<10000; k++)
+    {
+        Test->StepInTime();
+        if(k%500==0)
+        {
+            sprintf(name, "result_%6.6d.dat", k);
+            Test->ParaViewOutput(name);
+        }
+    }
+    return 0;
+}

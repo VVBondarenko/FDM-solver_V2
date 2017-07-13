@@ -6,12 +6,14 @@ CONFIG -= qt
 SOURCES += main.cpp \
     poissontask.cpp \
     gnuplointerface.cpp \
-    heattask.cpp
+    heattask.cpp \
+    cfdproblem.cpp
 
 HEADERS += \
     poissontask.h \
     gnuplointerface.h \
-    heattask.h
+    heattask.h \
+    cfdproblem.h
 
 QMAKE_CXXFLAGS+= -fopenmp -fopenmp-simd
 QMAKE_LFLAGS +=  -fopenmp -fopenmp-simd

@@ -15,5 +15,5 @@ HEADERS += \
     heattask.h \
     cfdproblem.h
 
-QMAKE_CXXFLAGS+= -fopenmp -fopenmp-simd
-QMAKE_LFLAGS +=  -fopenmp -fopenmp-simd
+QMAKE_CXXFLAGS+= -fopenmp -fopenmp-simd -ffast-math
+QMAKE_LFLAGS +=  -fopenmp -fopenmp-simd -ffast-math

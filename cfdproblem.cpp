@@ -193,6 +193,8 @@ void CFDProblem::StepInTime()
         CurlFunc->u[xSize-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
                 -(StreamFunc->u[xSize-1][i+1]   -2.*StreamFunc->u[xSize-1][i]+StreamFunc->u[xSize-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
     } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
+
+
     for(i = 1; i < xSize-1; i++)
     {
         for( j = 1; j< ySize-1; j++)
@@ -201,22 +203,11 @@ void CFDProblem::StepInTime()
             {
                 StreamFunc->u[i][j] = 0.5;
                 CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/StreamFunc->hx/StreamFunc->hx
-                        -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/StreamFunc->hy/StreamFunc->hy;
+                                        -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/StreamFunc->hy/StreamFunc->hy;
             }//условия на твёрдые тела внутри потока
-        }
-    }
 
-    //консервативная форма переносной силы
-    for(i=1;i<xSize-1;i++)
-    {
-        for(j=1;j<ySize-1;j++)
-        {
-//            if(StreamFunc->NodeState[i][j-1]==1 && StreamFunc->NodeState[i][j]==0)
-//            {
-//                StreamFunc->u[i][j] = -hy/3.+StreamFunc->u[i][j-1];
-//                StreamFunc->NodeState[i][j] = 2;
 
-//            }
+            //консервативная форма переносной силы
             CurlFunc->Force[i][j] =
                     -((CurlFunc->u[i+1][j]*vx[i+1][j]-CurlFunc->u[i-1][j]*vx[i-1][j])/CurlFunc->hx +
                       (CurlFunc->u[i][j+1]*vy[i][j+1]-CurlFunc->u[i][j-1]*vy[i][j-1])/CurlFunc->hy)*0.5;
@@ -234,19 +225,22 @@ void CFDProblem::StepInTime()
         {
             StreamFunc->Force[i][j] = -CurlFunc->u[i][j];
         }
-    StreamFunc->IterateWAutostop(50,1e-8);
-    for(i=1; i<xSize-1; i++)
-    {
-        for(j=1; j<ySize-1; j++)
-        {
-            if(StreamFunc->NodeState[i][j-1]==1 && StreamFunc->NodeState[i][j]==0)
-            {
-                StreamFunc->u[i][j] = -hy/4.5+StreamFunc->u[i][j-1];
-//                StreamFunc->NodeState[i][j] = 2;
+    StreamFunc->IterateWAutostop(30,1e-10);
 
-            }
-        }
-    }
+
+    //EHD actuator's part
+//    for(i=1; i<xSize-1; i++)
+//    {
+//        for(j=1; j<ySize-1; j++)
+//        {
+//            if(StreamFunc->NodeState[i][j-1]==1 && StreamFunc->NodeState[i][j]==0)
+//            {
+//                StreamFunc->u[i][j] = -hy/4.5+StreamFunc->u[i][j-1];
+////                StreamFunc->NodeState[i][j] = 2;
+
+//            }
+//        }
+//    }
 
 
 }

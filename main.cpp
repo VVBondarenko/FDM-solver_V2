@@ -491,12 +491,12 @@ int main()
 {
     CFDProblem *Test = new CFDairfoil(-1.,3.,
                                       -1.,1.,
-                                      128, 64,
+                                      256, 128,
                                       1e-4,3./520.);
     Test->SetInitialConditions(25.);
     int k;
     char name[50];
-    for(k=0; k<10000; k++)
+    for(k=0; k<60000; k++)
     {
         Test->StepInTime();
         if(k%500==0)

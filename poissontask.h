@@ -49,17 +49,11 @@ public:
     double hx, hy;
     double **u;
     double **tmp_u;
-//private:
     double **u_err;
 
     GnuploInterface Graph;
     int PreviousPlotKind;
 };
-
-//extern "C" void CMemCpy(void *dest, void *src)
-//{
-//    memcpy(dest, src, sizeof(src));
-//}
 
 
 class PoissonTaskWDiscreteForce : public PoissonTask
@@ -118,34 +112,12 @@ public:
         }
     }
 
-    void Iterate(int n, double SORomega)
+    void Iterate(int n)
     {
-//        double SORomega = 1.1;
 
         int K;
         for(K=0; K<n; K++)
         {
-//            double **U, **Tmp_U;
-//            U       = this->u;
-//            Tmp_U   = this->tmp_u;
-
-//#pragma omp parallel for collapse(2) //shared(U,Tmp_U) private(i,j)
-/*
-            for(i = 1; i < xSize-1; i++)
-            {
-                for(j = 1; j < ySize-1; j++)
-                {
-                    if(NodeState[i][j]==0)
-//                        Tmp_U[i][j] = ((U[i+1][j]+U[i-1][j])*hy*hy
-//                        U[i][j] = (1-SORomega)*U[i][j] +SORomega*((U[i+1][j]+U[i-1][j])*hy*hy
-//                                                                 +(U[i][j+1]+U[i][j-1])*hx*hx
-//                                                                 -Force[i][j]*hx*hx*hy*hy)/2./(hx*hx+hy*hy);
-                    u[i][j] = ((u[i+1][j]+u[i-1][j])*hy*hy
-                              +(u[i][j+1]+u[i][j-1])*hx*hx
-                              - Force[i][j]*hx*hx*hy*hy)/2./(hx*hx+hy*hy);
-                }
-            }
-*/
             std::thread Sol0 (IteratorCrutch,this,0);
             std::thread Sol1 (IteratorCrutch,this,1);
             std::thread Sol2 (IteratorCrutch,this,2);
@@ -164,17 +136,6 @@ public:
 //            Sol6.join();
 //            Sol7.join();
 
-
-//#pragma omp parallel for collapse(2)
-//            for(i = 1; i < xSize-1; i++)
-//            {
-//#pragma GCC ivdep
-//                for(j = 1; j < ySize-1; j++)
-//                {
-//                    if(NodeState[i][j]==0)
-//                        U[i][j] = Tmp_U[i][j];
-//                }
-//            }
         }
     }
 
@@ -187,7 +148,6 @@ public:
     {
         int i,j;
         maxErr = 0.;
-//#pragma omp parallel for collapse(2) //shared(U,Tmp_U) private(i,j)
 
         int H = (xSize-2)/4;
         int Istart  = 1+ThreadID*H;
@@ -225,38 +185,8 @@ public:
 
     double EstimateConvolution()
     {
-/*
-        int i,j;
-        double maxErr = 0.;
-//#pragma omp parallel for collapse(2) //shared(U,Tmp_U) private(i,j)
-        for(i = 1; i < xSize-1; i++)
-        {
-            for(j = 1; j < ySize-1; j++)
-            {
-                tmp_u[i][j] = ((u[i+1][j]+u[i-1][j])*hy*hy
-                              +(u[i][j+1]+u[i][j-1])*hx*hx
-                              - Force[i][j]*hx*hx*hy*hy)/2/(hx*hx+hy*hy);
-            }
-        }
-
-        for(i = 1; i < xSize-1; i++)
-        {
-            for(j = 1; j < ySize-1; j++)
-            {
-                maxErr = fmax(maxErr, fabs(u[i][j]-tmp_u[i][j]));
-            }
-        }
-
-        for(i = 1; i < xSize-1; i++)
-        {
-            for(j = 1; j < ySize-1; j++)
-            {
-                u[i][j] = tmp_u[i][j];
-            }
-        }
-*/
         double err0, err1, err2, err3;
-//        std::ref
+
         std::thread Sol0 (EstimatorCrutch,this,0,std::ref(err0));
         std::thread Sol1 (EstimatorCrutch,this,1,std::ref(err1));
         std::thread Sol2 (EstimatorCrutch,this,2,std::ref(err2));
@@ -286,7 +216,7 @@ public:
         double current_err = 1., prev_err = 2.;
         for(i=0;i<maxIters && current_err>stop_criteria && i>=0;i++)
         {
-            this->Iterate(10,1.0);
+            this->Iterate(10);
             prev_err = current_err;
             current_err = this->EstimateConvolution();
             if(fabs(prev_err-current_err)/prev_err<1.+1e-6)

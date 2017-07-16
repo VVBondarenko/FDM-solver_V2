@@ -30,7 +30,7 @@ public:
     virtual double profileRfunc(double x, double y, double theta)
     {
 //        return 0.04-((x+0.5)*(x+0.5)+y*y);
-        return 0.;
+        return 0.*x*y*theta;
     }
 
     void UpdateBoundaryCond();

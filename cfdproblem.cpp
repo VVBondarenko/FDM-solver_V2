@@ -96,11 +96,11 @@ void CFDProblem::SetInitialConditions(double AngleOfAttack)
         vx[0][i]    = (StreamBoundaryFunc(StreamFunc->lx,
                                           StreamFunc->ly+i*hy+1e-8)
                       -StreamBoundaryFunc(StreamFunc->lx,
-                                           StreamFunc->ly+i*hy-1e-8))/2.e-8;
+                                          StreamFunc->ly+i*hy-1e-8))/2.e-8;
         vx[xSize-1][i] = (StreamBoundaryFunc(StreamFunc->rx,
                                           StreamFunc->ly+i*hy+1e-8)
                       -StreamBoundaryFunc(StreamFunc->rx,
-                                           StreamFunc->ly+i*hy-1e-8))/2.e-8;
+                                          StreamFunc->ly+i*hy-1e-8))/2.e-8;
 
         vy[0][i]    =-(StreamBoundaryFunc(StreamFunc->lx+1e-8,
                                           StreamFunc->ly+i*hy)
@@ -182,14 +182,14 @@ void CFDProblem::StepInTime()
         StreamFunc->u[i][ySize-2]  = StreamFunc->u[i][ySize-1];
 
 
-        CurlFunc->u[i][0]    = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
+        CurlFunc->u[i][0]       = -(StreamFunc->u[i][0]    -2.*StreamFunc->u[i][1]     +StreamFunc->u[i][2]    )/StreamFunc->hy/StreamFunc->hy;
         CurlFunc->u[i][ySize-1] = -(StreamFunc->u[i][ySize-1] -2.*StreamFunc->u[i][ySize-2]  +StreamFunc->u[i][ySize-3] )/StreamFunc->hy/StreamFunc->hy;
     } //условия на границе твёрдого тела
 
     for(i=1; i<ySize-1; i++)
     {
         CurlFunc->u[0][i]    = //-(StreamFunc->u[0][i]        -2.*StreamFunc->u[1][i]   +StreamFunc->u[2][i]      )/StreamFunc->hx/StreamFunc->hx
-                -(StreamFunc->u[0][i+1]      -2.*StreamFunc->u[0][i]   +StreamFunc->u[0][i-1]    )/StreamFunc->hy/StreamFunc->hy;
+                -(StreamFunc->u[0][i+1]         -2.*StreamFunc->u[0][i]      +StreamFunc->u[0][i-1]          )/StreamFunc->hy/StreamFunc->hy;
         CurlFunc->u[xSize-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/StreamFunc->hx/StreamFunc->hx
                 -(StreamFunc->u[xSize-1][i+1]   -2.*StreamFunc->u[xSize-1][i]+StreamFunc->u[xSize-1][i-1] )/StreamFunc->hy/StreamFunc->hy;
     } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
@@ -201,7 +201,7 @@ void CFDProblem::StepInTime()
         {
             if(StreamFunc->NodeState[i][j]==1)
             {
-                StreamFunc->u[i][j] = 0.5;
+                StreamFunc->u[i][j]  = 0.5;
                 CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/StreamFunc->hx/StreamFunc->hx
                                         -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/StreamFunc->hy/StreamFunc->hy;
             }//условия на твёрдые тела внутри потока
@@ -225,8 +225,8 @@ void CFDProblem::StepInTime()
         {
             StreamFunc->Force[i][j] = -CurlFunc->u[i][j];
         }
-    StreamFunc->IterateWAutostop(30,1e-10);
-
+//    StreamFunc->IterateWAutostop(10,1e-10);
+    StreamFunc->Iterate(4);
 
     //EHD actuator's part
 //    for(i=1; i<xSize-1; i++)
@@ -259,4 +259,69 @@ void CFDProblem::ParaViewOutput(const char *filename)
             fprintf(velocityValue,"%f %f %f %f\n",hx*i+lx, hy*j+ly, vx[i][j], vy[i][j]);
                                                //sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
     fclose(velocityValue);
+}
+
+void CFDProblem::ParaViewOutput_v2(const char *filename)
+{
+    try
+    {
+        NcFile dataFile(filename, NcFile::replace);
+
+        NcDim xDim = dataFile.addDim("x", xSize);
+        NcDim yDim = dataFile.addDim("y", ySize);
+
+        double xLine[xSize], yLine[ySize];
+
+        for(int i = 0; i < xSize; i++)
+        {
+            xLine[i] = lx + i*hx;
+        }
+
+        for(int i = 0; i < ySize; i++)
+        {
+            yLine[i] = ly + i*hy;
+        }
+
+        NcVar xVar = dataFile.addVar("x", ncDouble, xDim);
+        NcVar yVar = dataFile.addVar("y", ncDouble, yDim);
+
+        xVar.putVar(xLine);
+        yVar.putVar(yLine);
+
+        xVar.putAtt("units","m");
+        yVar.putAtt("units","m");
+
+        vector<NcDim> dims;
+        dims.push_back(yDim);
+        dims.push_back(xDim);
+        NcVar vx_arr = dataFile.addVar("vx", ncDouble, dims);
+        NcVar vy_arr = dataFile.addVar("vy", ncDouble, dims);
+
+        vx_arr.putAtt("units","m/s");
+        vy_arr.putAtt("units","m/s");
+
+        double VX[ySize][xSize];
+        double VY[ySize][xSize];
+
+        for(int i = 0; i<xSize; i++)
+        {
+            for(int j = 0; j<ySize; j++)
+            {
+                VX[j][i] = vx[i][j];
+                VY[j][i] = vy[i][j];
+            }
+        }
+
+        vx_arr.putVar(VX);
+        vy_arr.putVar(VY);
+
+        return;
+//        dataFile.write();
+//        data.putVar(dataOut);
+    }
+    catch(NcException& e)
+    {
+        e.what();
+        return;
+    }
 }

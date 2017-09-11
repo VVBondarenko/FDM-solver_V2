@@ -3,6 +3,8 @@ CONFIG += console c++11
 CONFIG -= app_bundle
 CONFIG -= qt
 
+LIBS += -lnetcdf_c++4
+
 SOURCES += main.cpp \
     poissontask.cpp \
     gnuplointerface.cpp \

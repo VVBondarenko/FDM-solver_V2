@@ -38,18 +38,43 @@ int main()
 {
     CFDProblem *Test = new CFDairfoil(-1.,3.,
                                       -1.,1.,
-                                      256, 128,
+                                      128, 64,
                                       1e-4,3./520.);
     Test->SetInitialConditions(25.);
     int k;
     char name[50];
+
+/*
+
+//  part of possible future balancer mechanism
+
+    int nodes = 0,p;
+    for(k=1;k<Test->xSize-1;k++)
+    {
+        if(k%(Test->xSize/8)==0)
+        {
+            printf("%d\n",nodes);
+            nodes = 0;
+        }
+        for(p=1;p<Test->ySize-1;p++)
+        {
+
+            if(Test->StreamFunc->NodeState[k][p] == 0)
+                nodes++;
+        }
+    }
+    printf("%d\n",nodes);
+*/
     for(k=0; k<60000; k++)
     {
         Test->StepInTime();
         if(k%500==0)
         {
-            sprintf(name, "result_%6.6d.dat", k);
-            Test->ParaViewOutput(name);
+//            sprintf(name, "result_%6.6d.dat", k);
+//            Test->ParaViewOutput(name);
+
+            sprintf(name, "result_%6.6d.nc", k);
+            Test->ParaViewOutput_v2(name);
         }
     }
     return 0;

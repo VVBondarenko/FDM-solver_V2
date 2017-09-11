@@ -3,6 +3,12 @@
 
 #include <poissontask.h>
 #include <heattask.h>
+#include <iostream>
+#include <netcdf>
+#include <vector>
+using namespace std;
+using namespace netCDF;
+using namespace netCDF::exceptions;
 
 
 class CFDProblem
@@ -36,7 +42,8 @@ public:
     void UpdateBoundaryCond();
     void StepInTime();
 
-    void ParaViewOutput(const char *filename);
+    void ParaViewOutput     (const char *filename);
+    void ParaViewOutput_v2  (const char *filename);
 };
 
 #endif // CFDPROBLEM_H

@@ -100,14 +100,17 @@ public:
         if(ThreadID==3)
             Iend = xSize-1;
 
+        double hx_s = hx*hx,
+               hy_s = hy*hy;
+
         for(i = Istart; i < Iend; i++)
         {
             for(j = 1; j < ySize-1; j++)
             {
                 if(NodeState[i][j]==0)
-                    u[i][j] = ((u[i+1][j]+u[i-1][j])*hy*hy
-                              +(u[i][j+1]+u[i][j-1])*hx*hx
-                              - Force[i][j]*hx*hx*hy*hy)/2./(hx*hx+hy*hy);
+                    u[i][j] = ((u[i+1][j]+u[i-1][j]-Force[i][j]*hx_s)*hy_s
+                              +(u[i][j+1]+u[i][j-1])*hx_s
+                              /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
             }
         }
     }
@@ -155,13 +158,18 @@ public:
         if(ThreadID==3)
             Iend = xSize-1;
 
+        double hx_s = hx*hx,
+               hy_s = hy*hy;
+
         for(i = Istart; i < Iend; i++)
         {
             for(j = 1; j < ySize-1; j++)
             {
-                tmp_u[i][j] = ((u[i+1][j]+u[i-1][j])*hy*hy
-                              +(u[i][j+1]+u[i][j-1])*hx*hx
-                              - Force[i][j]*hx*hx*hy*hy)/2/(hx*hx+hy*hy);
+
+                tmp_u[i][j] = ((u[i+1][j]+u[i-1][j]-Force[i][j]*hx_s)*hy_s
+                              +(u[i][j+1]+u[i][j-1])*hx_s
+                              /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
+
             }
         }
 
@@ -214,14 +222,17 @@ public:
     {
         int i;
         double current_err = 1., prev_err = 2.;
-        for(i=0;i<maxIters && current_err>stop_criteria && i>=0;i++)
+        for(i=0;i<maxIters && current_err>stop_criteria/* && i>=0*/;i++)
         {
-            this->Iterate(10);
+            this->Iterate(2);
             prev_err = current_err;
-            current_err = this->EstimateConvolution();
-            if(fabs(prev_err-current_err)/prev_err<1.+1e-6)
+//            current_err = this->EstimateConvolution();
+            printf("%e\t%e\t%d\n",prev_err,current_err = this->EstimateConvolution(),i);
+            if(fabs(prev_err-current_err)/prev_err<1.+1e-7)
+            {
+                printf("brake\n");
                 break;
-    //            printf("Iters\n");
+            }
         }
         return current_err;
     }

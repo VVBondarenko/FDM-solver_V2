@@ -9,6 +9,7 @@ extern "C"
 #include <gnuplointerface.h>
 #include <omp.h>
 #include <thread>
+#include <vector>
 
 class PoissonTask
 {
@@ -86,15 +87,15 @@ public:
     double **Force;
     int **NodeState;
 
-    static void IteratorCrutch(PoissonTaskWDiscreteForce* Temp, int ID)
+    static void IteratorCrutch(PoissonTaskWDiscreteForce* Temp, int ID, int Q)
     {
-        Temp->IteratorThread(ID);
+        Temp->IteratorThread(ID,Q);
     }
 
-    void IteratorThread(int ThreadID)
+    void IteratorThread(int ThreadID, int ThreadQ)
     {
         int i, j;
-        int H = (xSize-2)/4;
+        int H = (xSize-2)/ThreadQ;
         int Istart  = 1+ThreadID*H;
         int Iend    =   Istart + H;
         if(ThreadID==3)
@@ -102,43 +103,80 @@ public:
 
         double hx_s = hx*hx,
                hy_s = hy*hy;
-
+        double u_temp;
+//        int Nactive = 0;
         for(i = Istart; i < Iend; i++)
         {
             for(j = 1; j < ySize-1; j++)
             {
                 if(NodeState[i][j]==0)
-                    u[i][j] = ((u[i+1][j]+u[i-1][j]-Force[i][j]*hx_s)*hy_s
-                              +(u[i][j+1]+u[i][j-1])*hx_s
-                              /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
+                {
+                    u_temp= ((u[i+1][j]+u[i-1][j]-Force[i][j]*hx_s)*hy_s
+                            +(u[i][j+1]+u[i][j-1])*hx_s
+                            /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
+                    if(fabs(u_temp-u[i][j])<1.e-7)
+                        NodeState[i][j] = -1;
+                    u[i][j] = u_temp;
+//                    Nactive++;
+                }
             }
         }
+//        printf("%d\n",Nactive);
     }
 
-    void Iterate(int n)
+    void Iterate(int n, int ResetActivesNum)
     {
 
+        int i,j,K;
+        int ThreadQ = 3;
+        for(K=0; K<n; K++)
+        {
+            std::vector<std::thread> ThrPool;
+
+            for(i=0;i<ThreadQ;i++)
+            {
+                ThrPool.push_back(std::thread(IteratorCrutch,this,i,ThreadQ));
+            }
+
+            for(i=0;i<ThreadQ;i++)
+            {
+                ThrPool[i].join();
+            }
+
+            if(K%ResetActivesNum==ResetActivesNum-1 || K==n-1)
+                for(i=1;i<xSize-1;i++)
+                    for(j=1;j<ySize-1;j++)
+                        if(NodeState[i][j] == -1)
+                            NodeState[i][j] = 0;
+        }
+
+    }
+
+    void IterateOnMultyRes(int n, int factor)
+    {
         int K;
         for(K=0; K<n; K++)
         {
-            std::thread Sol0 (IteratorCrutch,this,0);
-            std::thread Sol1 (IteratorCrutch,this,1);
-            std::thread Sol2 (IteratorCrutch,this,2);
-            std::thread Sol3 (IteratorCrutch,this,3);
-//            std::thread Sol4 (IteratorCrutch,this,4);
-//            std::thread Sol5 (IteratorCrutch,this,5);
-//            std::thread Sol6 (IteratorCrutch,this,6);
-//            std::thread Sol7 (IteratorCrutch,this,7);
+            int i, j;
+//            int H = (xSize-2)/4;
+//            int Istart  = 1+ThreadID*H;
+//            int Iend    =   Istart + H;
+//            if(ThreadID==3)
+//                Iend = xSize-1;
 
-            Sol0.join();
-            Sol1.join();
-            Sol2.join();
-            Sol3.join();
-//            Sol4.join();
-//            Sol5.join();
-//            Sol6.join();
-//            Sol7.join();
+            double hx_s = hx*hx,
+                   hy_s = hy*hy;
 
+            for(i = factor; i < xSize-factor; i+=factor)
+            {
+                for(j = factor; j < ySize-factor; j+=factor)
+                {
+                    if(NodeState[i][j]==0)
+                        u[i][j] = ((u[i+factor][j]+u[i-factor][j]-Force[i][j]*hx_s)*hy_s
+                                  +(u[i][j+factor]+u[i][j-factor])*hx_s
+                                  /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
+                }
+            }
         }
     }
 
@@ -224,7 +262,7 @@ public:
         double current_err = 1., prev_err = 2.;
         for(i=0;i<maxIters && current_err>stop_criteria/* && i>=0*/;i++)
         {
-            this->Iterate(2);
+            this->Iterate(2,1);
             prev_err = current_err;
 //            current_err = this->EstimateConvolution();
             printf("%e\t%e\t%d\n",prev_err,current_err = this->EstimateConvolution(),i);

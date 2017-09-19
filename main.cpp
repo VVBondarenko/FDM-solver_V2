@@ -34,14 +34,21 @@ public:
     }
 };
 
+void CallOutput(CFDProblem *Task, const char *name)
+{
+    Task->ParaViewOutput_v2(name);
+}
+
 int main()
 {
     CFDProblem *Test = new CFDairfoil(-1.,3.,
                                       -1.,1.,
                                       128, 64,
-                                      1e-4,3./520.);
-    Test->SetInitialConditions(25.);
+                                      1e-3,3./520.);
+    Test->SetInitialConditions(12.);
+    Test->StreamFunc->Iterate(20,4);
     int k;
+//    scanf("%d",&k);
     char name[50];
 
 /*
@@ -65,14 +72,11 @@ int main()
     }
     printf("%d\n",nodes);
 */
-    for(k=0; k<60000; k++)
+    for(k=0; k<6000; k++)
     {
         Test->StepInTime();
-        if(k%500==0)
+        if(k%50==0)
         {
-//            sprintf(name, "result_%6.6d.dat", k);
-//            Test->ParaViewOutput(name);
-
             sprintf(name, "result_%6.6d.nc", k);
             Test->ParaViewOutput_v2(name);
         }

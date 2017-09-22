@@ -3,6 +3,8 @@
 
 CFDProblem::CFDProblem(double LX, double RX, double LY, double RY, int XSize, int YSize, double dtime, double Viscousity)
 {
+    ThreadNum = 4;
+
     if(RX>LX)
     {
         lx = LX;
@@ -166,6 +168,8 @@ double CFDProblem::StreamBoundaryFunc(double x, double y)
 //    return 0.04-((x+0.5)*(x+0.5)+y*y);
 //}
 
+
+
 void CFDProblem::StepInTime()
 {
     double hx_s = StreamFunc->hx*StreamFunc->hx,
@@ -191,37 +195,7 @@ void CFDProblem::StepInTime()
         CurlFunc->u[xSize-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/hx_s
                                     -(StreamFunc->u[xSize-1][i+1]   -2.*StreamFunc->u[xSize-1][i]+StreamFunc->u[xSize-1][i-1] )/hy_s;
     } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
-
-    //упрощённая для чтения форма записи
 /*
-    for(i=1;i<xSize-1;i++)
-        for(j=1;j<ySize-1;j++)
-        {
-            vx[i][j] =  (StreamFunc->u[i][j+1]-StreamFunc->u[i][j-1])/StreamFunc->hy*0.5;
-            vy[i][j] = -(StreamFunc->u[i+1][j]-StreamFunc->u[i-1][j])/StreamFunc->hx*0.5;
-        }
-
-    for(i = 1; i < xSize-1; i++)
-    {
-        for( j = 1; j< ySize-1; j++)
-        {
-            if(StreamFunc->NodeState[i][j]==1)
-            {
-                StreamFunc->u[i][j]  = 0.5;
-                CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/hx_s
-                                        -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/hy_s;
-            }//условия на твёрдые тела внутри потока
-
-
-            //консервативная форма переносной силы
-            CurlFunc->Force[i][j] =
-                    -((CurlFunc->u[i+1][j]*vx[i+1][j]-CurlFunc->u[i-1][j]*vx[i-1][j])/CurlFunc->hx +
-                      (CurlFunc->u[i][j+1]*vy[i][j+1]-CurlFunc->u[i][j-1]*vy[i][j-1])/CurlFunc->hy)*0.5;
-        }
-    }
-*/
-
-
     for(i = 1; i < xSize-1; i++)
     {
         for( j = 1; j< ySize-1; j++)
@@ -242,10 +216,8 @@ void CFDProblem::StepInTime()
                       -CurlFunc->u[i][j-1]*(StreamFunc->u[i+1][j-1]-StreamFunc->u[i-1][j-1])))*hxhy;
         }
     }
-
-
-
-
+*/
+    UpdateConvectiveForce();
 
     CurlFunc->StepInTime_Crank();
 
@@ -276,6 +248,64 @@ void CFDProblem::StepInTime()
 //    }
 
 
+}
+
+void CFDProblem::UpdateConvectiveForce()
+{
+//    int ThreadNum = 6;
+    int i;
+    std::vector<std::thread> ThrPool;
+
+    for(i=0;i<ThreadNum;i++)
+    {
+        ThrPool.push_back(std::thread(UpdateConvectiveForce_Crutch,this,ThreadNum,i));
+    }
+
+    for(i=0;i<ThreadNum;i++)
+    {
+        ThrPool[i].join();
+    }
+}
+
+void CFDProblem::UpdateConvectiveForce_Thread(int ThreadNum, int ThreadID)
+{
+    int i, j;
+    int H = (xSize-2)/ThreadNum;
+    int Istart  = 1+ThreadID*H;
+    int Iend    =   Istart + H;
+
+    double hx_s = StreamFunc->hx*StreamFunc->hx,
+           hy_s = StreamFunc->hy*StreamFunc->hy,
+           hxhy = 0.25/CurlFunc->hx/CurlFunc->hy;
+
+
+
+    for(i = Istart; i < Iend; i++)
+    {
+        for( j = 1; j< ySize-1; j++)
+        {
+            if(StreamFunc->NodeState[i][j]==1)
+            {
+                StreamFunc->u[i][j]  = 0.5;
+                CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/hx_s
+                                        -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/hy_s;
+            }//условия на твёрдые тела внутри потока
+
+
+            //консервативная форма переносной силы
+            CurlFunc->Force[i][j] =
+                    -((CurlFunc->u[i+1][j]*(StreamFunc->u[i+1][j+1]-StreamFunc->u[i+1][j-1])
+                      -CurlFunc->u[i-1][j]*(StreamFunc->u[i-1][j+1]-StreamFunc->u[i-1][j-1])) -
+                      (CurlFunc->u[i][j+1]*(StreamFunc->u[i+1][j+1]-StreamFunc->u[i-1][j+1])
+                      -CurlFunc->u[i][j-1]*(StreamFunc->u[i+1][j-1]-StreamFunc->u[i-1][j-1])))*hxhy;
+        }
+    }
+
+}
+
+void CFDProblem::UpdateConvectiveForce_Crutch(CFDProblem *Task, int ThreadNum, int ThreadID)
+{
+    Task->UpdateConvectiveForce_Thread(ThreadNum, ThreadID);
 }
 
 void CFDProblem::ParaViewOutput(const char *filename)
@@ -372,4 +402,11 @@ void CFDProblem::ParaViewOutput_v2(const char *filename)
         e.what();
         return;
     }
+}
+
+void CFDProblem::SetThreadNum(int n)
+{
+    ThreadNum = n;
+    StreamFunc->ThreadNum = n;
+    CurlFunc->ThreadNum = n;
 }

@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <gnuplointerface.h>
+#include <thread>
+#include <vector>
 
 class HeatTask
 {
@@ -58,6 +60,7 @@ class HeatTaskWDiscreteForce : public HeatTask
 public:
     double **Force;
     double **next_u;
+    int ThreadNum;
     HeatTaskWDiscreteForce(double LX, double RX,
                            double LY, double RY,
                            int XSize, int YSize,
@@ -67,6 +70,7 @@ public:
                                                              dt, TCC)
     {
         int i, j;
+        ThreadNum = 4;
         Force = new double* [xSize];
         next_u= new double* [xSize];
         for(i = 0; i < xSize; i++)
@@ -167,6 +171,54 @@ public:
 
     }
 
+    void CrankIterator(int n)
+    {
+        int i,K;
+//        int ThreadNum = 6;
+        for(K=0; K<n; K++)
+        {
+            std::vector<std::thread> ThrPool;
+
+            for(i=0;i<ThreadNum;i++)
+            {
+                ThrPool.push_back(std::thread(CrankIterator_Crutch,this,ThreadNum,i));
+            }
+
+            for(i=0;i<ThreadNum;i++)
+            {
+                ThrPool[i].join();
+            }
+        }
+    }
+
+    void CrankIterator_Thread(int ThreadNum, int ThreadID)
+    {
+        int i,j;
+
+        int H = (xSize-2)/ThreadNum;
+        int Istart  = 1+ThreadID*H;
+        int Iend    =   Istart + H;
+
+        double hx_s = hx*hx,
+               hy_s = hy*hy;
+
+
+        for(i = Istart; i < Iend; i++)
+        {
+            for(j = 1; j < ySize-1; j++)
+            {
+                next_u[i][j] = u[i][j]+ (TCC*((next_u[i-1][j]-2.*next_u[i][j]+next_u[i+1][j])/hx_s  +
+                                              (next_u[i][j-1]-2.*next_u[i][j]+next_u[i][j+1])/hy_s) +
+                                              Force[i][j] +  Prev_du_dt[i][j])*dt*0.5;
+            }
+        }
+    }
+
+    static void CrankIterator_Crutch(HeatTaskWDiscreteForce *Task, int ThreadNum, int ThreadID)
+    {
+        Task->CrankIterator_Thread(ThreadNum, ThreadID);
+    }
+
     void StepInTime_Crank()
     {
         int i,j,k;
@@ -177,28 +229,28 @@ public:
         {
             for(j = 1; j < ySize-1; j++)
             {
-                Prev_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
-                                         (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
+                Prev_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx_s  +
+                                         (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy_s) +
                                    Force[i][j];
 
                 next_u[i][j] = u[i][j] + Prev_du_dt[i][j]*dt;
             }
         }
 
-        for(k=0;k<5;k++)
-        {
-            for(i = 1; i < xSize-1; i++)
-            {
-                for(j = 1; j < ySize-1; j++)
-                {
-                    next_u[i][j] = u[i][j]+ (TCC*((next_u[i-1][j]-2.*next_u[i][j]+next_u[i+1][j])/hx_s  +
-                                                  (next_u[i][j-1]-2.*next_u[i][j]+next_u[i][j+1])/hy_s) +
-                                                  Force[i][j] +  Prev_du_dt[i][j])*dt*0.5;
-                }
-            }
+//        for(k=0;k<5;k++)
+//        {
+//            for(i = 1; i < xSize-1; i++)
+//            {
+//                for(j = 1; j < ySize-1; j++)
+//                {
+//                    next_u[i][j] = u[i][j]+ (TCC*((next_u[i-1][j]-2.*next_u[i][j]+next_u[i+1][j])/hx_s  +
+//                                                  (next_u[i][j-1]-2.*next_u[i][j]+next_u[i][j+1])/hy_s) +
+//                                                  Force[i][j] +  Prev_du_dt[i][j])*dt*0.5;
+//                }
+//            }
 
-        }
-
+//        }
+        CrankIterator(5);
 
         for(i = 1; i < xSize-1; i++)
         {

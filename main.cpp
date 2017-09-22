@@ -45,6 +45,8 @@ int main()
                                       -1.,1.,
                                       256, 128,
                                       1e-3,3./520.);
+    Test->SetThreadNum(6);
+
     Test->SetInitialConditions(24.);
     Test->StreamFunc->Iterate(20,4);
     int k;

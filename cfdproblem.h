@@ -19,6 +19,8 @@ public:
                int XSize, int YSize,
                double dtime, double Viscousity);
 
+    int ThreadNum;
+
     double lx, rx;
     double ly, ry;
     int xSize, ySize;
@@ -42,9 +44,16 @@ public:
     void UpdateBoundaryCond();
     void StepInTime();
 
+    void UpdateConvectiveForce();
+    void UpdateConvectiveForce_Thread(int ThreadNum, int ThreadID);
+    static void UpdateConvectiveForce_Crutch(CFDProblem *Task, int ThreadNum, int ThreadID);
+
+
     void ParaViewOutput     (const char *filename);
     void ParaViewOutput_v2  (const char *filename);
 
+
+    void SetThreadNum(int n);
 };
 
 #endif // CFDPROBLEM_H

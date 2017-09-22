@@ -82,24 +82,23 @@ public:
                 Force[i][j] = 0.;
                 NodeState[i][j]=0.;
             }
+        ThreadNum = 4;
     }
 
     double **Force;
     int **NodeState;
-
+    int ThreadNum;
     static void IteratorCrutch(PoissonTaskWDiscreteForce* Temp, int ID, int Q)
     {
         Temp->IteratorThread(ID,Q);
     }
 
-    void IteratorThread(int ThreadID, int ThreadQ)
+    void IteratorThread(int ThreadID, int ThreadNum)
     {
         int i, j;
-        int H = (xSize-2)/ThreadQ;
+        int H = (xSize-2)/ThreadNum;
         int Istart  = 1+ThreadID*H;
         int Iend    =   Istart + H;
-        if(ThreadID==3)
-            Iend = xSize-1;
 
         double hx_s = hx*hx,
                hy_s = hy*hy;
@@ -128,17 +127,17 @@ public:
     {
 
         int i,j,K;
-        int ThreadQ = 3;
+//        int ThreadNum = 6;
         for(K=0; K<n; K++)
         {
             std::vector<std::thread> ThrPool;
 
-            for(i=0;i<ThreadQ;i++)
+            for(i=0;i<ThreadNum;i++)
             {
-                ThrPool.push_back(std::thread(IteratorCrutch,this,i,ThreadQ));
+                ThrPool.push_back(std::thread(IteratorCrutch,this,i,ThreadNum));
             }
 
-            for(i=0;i<ThreadQ;i++)
+            for(i=0;i<ThreadNum;i++)
             {
                 ThrPool[i].join();
             }

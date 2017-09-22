@@ -185,7 +185,7 @@ public:
             }
         }
 
-        for(k=0;k<10;k++)
+        for(k=0;k<5;k++)
         {
             for(i = 1; i < xSize-1; i++)
             {

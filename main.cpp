@@ -43,9 +43,9 @@ int main()
 {
     CFDProblem *Test = new CFDairfoil(-1.,3.,
                                       -1.,1.,
-                                      128, 64,
+                                      256, 128,
                                       1e-3,3./520.);
-    Test->SetInitialConditions(12.);
+    Test->SetInitialConditions(24.);
     Test->StreamFunc->Iterate(20,4);
     int k;
 //    scanf("%d",&k);

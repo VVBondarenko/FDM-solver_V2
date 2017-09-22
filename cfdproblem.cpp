@@ -169,15 +169,10 @@ double CFDProblem::StreamBoundaryFunc(double x, double y)
 void CFDProblem::StepInTime()
 {
     double hx_s = StreamFunc->hx*StreamFunc->hx,
-           hy_s = StreamFunc->hy*StreamFunc->hy;
+           hy_s = StreamFunc->hy*StreamFunc->hy,
+           hxhy = 0.25/CurlFunc->hx/CurlFunc->hy;
 
     int i,j;
-    for(i=1;i<xSize-1;i++)
-        for(j=1;j<ySize-1;j++)
-        {
-            vx[i][j] =  (StreamFunc->u[i][j+1]-StreamFunc->u[i][j-1])/StreamFunc->hy*0.5;
-            vy[i][j] = -(StreamFunc->u[i+1][j]-StreamFunc->u[i-1][j])/StreamFunc->hx*0.5;
-        }
 
     for(i=1; i<xSize-1; i++)
     {
@@ -187,7 +182,7 @@ void CFDProblem::StepInTime()
 
         CurlFunc->u[i][0]       = -(StreamFunc->u[i][0]       -2.*StreamFunc->u[i][1]        +StreamFunc->u[i][2]       )/hy_s;
         CurlFunc->u[i][ySize-1] = -(StreamFunc->u[i][ySize-1] -2.*StreamFunc->u[i][ySize-2]  +StreamFunc->u[i][ySize-3] )/hy_s;
-    } //условия на границе твёрдого тела
+    } //условия на границе твёрдого тела (стенки трубы)
 
     for(i=1; i<ySize-1; i++)
     {
@@ -197,6 +192,14 @@ void CFDProblem::StepInTime()
                                     -(StreamFunc->u[xSize-1][i+1]   -2.*StreamFunc->u[xSize-1][i]+StreamFunc->u[xSize-1][i-1] )/hy_s;
     } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
 
+    //упрощённая для чтения форма записи
+/*
+    for(i=1;i<xSize-1;i++)
+        for(j=1;j<ySize-1;j++)
+        {
+            vx[i][j] =  (StreamFunc->u[i][j+1]-StreamFunc->u[i][j-1])/StreamFunc->hy*0.5;
+            vy[i][j] = -(StreamFunc->u[i+1][j]-StreamFunc->u[i-1][j])/StreamFunc->hx*0.5;
+        }
 
     for(i = 1; i < xSize-1; i++)
     {
@@ -216,12 +219,34 @@ void CFDProblem::StepInTime()
                       (CurlFunc->u[i][j+1]*vy[i][j+1]-CurlFunc->u[i][j-1]*vy[i][j-1])/CurlFunc->hy)*0.5;
         }
     }
-
-/*    if(CurlFunc->time == 0.)
-        CurlFunc->StepInTime_Euler();
-    else
-        CurlFunc->StepInTime_Adams();
 */
+
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for( j = 1; j< ySize-1; j++)
+        {
+            if(StreamFunc->NodeState[i][j]==1)
+            {
+                StreamFunc->u[i][j]  = 0.5;
+                CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/hx_s
+                                        -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/hy_s;
+            }//условия на твёрдые тела внутри потока
+
+
+            //консервативная форма переносной силы
+            CurlFunc->Force[i][j] =
+                    -((CurlFunc->u[i+1][j]*(StreamFunc->u[i+1][j+1]-StreamFunc->u[i+1][j-1])
+                      -CurlFunc->u[i-1][j]*(StreamFunc->u[i-1][j+1]-StreamFunc->u[i-1][j-1])) -
+                      (CurlFunc->u[i][j+1]*(StreamFunc->u[i+1][j+1]-StreamFunc->u[i-1][j+1])
+                      -CurlFunc->u[i][j-1]*(StreamFunc->u[i+1][j-1]-StreamFunc->u[i-1][j-1])))*hxhy;
+        }
+    }
+
+
+
+
+
     CurlFunc->StepInTime_Crank();
 
     for(i=1;i<xSize-1;i++)
@@ -314,6 +339,14 @@ void CFDProblem::ParaViewOutput_v2(const char *filename)
         double VX[ySize][xSize];
         double VY[ySize][xSize];
         int    body[ySize][xSize];
+
+        for(int i=1;i<xSize-1;i++)
+            for(int j=1;j<ySize-1;j++)
+            {
+                vx[i][j] =  (StreamFunc->u[i][j+1]-StreamFunc->u[i][j-1])/StreamFunc->hy*0.5;
+                vy[i][j] = -(StreamFunc->u[i+1][j]-StreamFunc->u[i-1][j])/StreamFunc->hx*0.5;
+            }
+
 
         for(int i = 0; i<xSize; i++)
         {

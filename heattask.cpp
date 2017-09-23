@@ -66,22 +66,14 @@ void HeatTask::StepInTime_Euler()
     int i,j;
     // du/dt = a \Delta u + f
     for(i = 1; i < xSize-1; i++)
-    {
         for(j = 1; j < ySize-1; j++)
-        {
             Prev_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
                                      (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
                                             rightpart_f(lx+i*hx,ly+j*hy,time);
-        }
-    }
 
     for(i = 1; i < xSize-1; i++)
-    {
         for(j = 1; j < ySize-1; j++)
-        {
             u[i][j] += dt*Prev_du_dt[i][j];
-        }
-    }
 
     time += dt;
 
@@ -104,22 +96,14 @@ void HeatTask::StepInTime_Adams()
     int i,j;
     // du/dt = a \Delta u + f
     for(i = 1; i < xSize-1; i++)
-    {
         for(j = 1; j < ySize-1; j++)
-        {
             Curr_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
                                      (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
                                             rightpart_f(lx+i*hx,ly+j*hy,time);
-        }
-    }
 
     for(i = 1; i < xSize-1; i++)
-    {
         for(j = 1; j < ySize-1; j++)
-        {
             u[i][j] += dt*(1.5*Curr_du_dt[i][j]-0.5*Prev_du_dt[i][j]);
-        }
-    }
 
     time += dt;
 
@@ -155,9 +139,7 @@ void HeatTask::Output()
     for(i=0;i<xSize;i++)
     {
         for(j=0;j<ySize;j++)
-        {
             fprintf(output,"%f %f %f\n",lx+hx*i,ly+hy*j,u[i][j]);
-        }
         fprintf(output,"\n");
     }
 
@@ -208,7 +190,6 @@ void HeatTask::Plot(int Kind)
                 script.push_back("splot \"result.dat\" using 1:2:3 with image");
             }
 
-//            Graph.open();
             Graph.execute(script);
             PreviousPlotKind = Kind;
         }
@@ -236,7 +217,6 @@ void HeatTask::Animate(double FinalTime)
         for(int i=0; i<20; i++)
             this->StepInTime_Adams();
         Output();
-//        usleep(500);
         Graph.write("splot \"result.dat\" ");
         Graph.flush();
     }
@@ -251,3 +231,164 @@ void HeatTask::ClosePlot()
 }
 
 
+
+HeatTaskWDiscreteForce::HeatTaskWDiscreteForce(double LX, double RX,
+                                               double LY, double RY,
+                                               int XSize, int YSize,
+                                               double dt, double TCC) : HeatTask(LX, RX,
+                                                                                 LY, RY,
+                                                                                 XSize, YSize,
+                                                                                 dt, TCC)
+{
+    int i, j;
+    ThreadNum = 4;
+    Force = new double* [xSize];
+    next_u= new double* [xSize];
+    for(i = 0; i < xSize; i++)
+    {
+        Force[i] = new double[ySize];
+        next_u[i]= new double[ySize];
+    }
+    for(i=0;i<xSize;i++)
+        for(j=0;j<ySize;j++)
+        {
+            Force[i][j] = 0.;
+            next_u[i][j]= 0.;
+        }
+}
+
+void HeatTaskWDiscreteForce::StepInTime_Euler()
+{
+    int i,j;
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            Prev_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
+                    (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
+                    Force[i][j];
+        }
+    }
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            u[i][j] += dt*Prev_du_dt[i][j];
+        }
+    }
+
+    time += dt;
+}
+
+void HeatTaskWDiscreteForce::StepInTime_Adams()
+{
+    int i,j;
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            Curr_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx/hx  +
+                    (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy/hy) +
+                    Force[i][j];
+        }
+    }
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            u[i][j] += dt*(1.5*Curr_du_dt[i][j]-0.5*Prev_du_dt[i][j]);
+        }
+    }
+
+    time += dt;
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            Prev_du_dt[i][j] = Curr_du_dt[i][j];
+        }
+    }
+
+}
+
+void HeatTaskWDiscreteForce::CrankIterator(int n)
+{
+    int i,K;
+    for(K=0; K<n; K++)
+    {
+        std::vector<std::thread> ThrPool;
+
+        for(i=0;i<ThreadNum;i++)
+        {
+            ThrPool.push_back(std::thread(CrankIterator_Crutch,this,ThreadNum,i));
+        }
+
+        for(i=0;i<ThreadNum;i++)
+        {
+            ThrPool[i].join();
+        }
+    }
+}
+
+void HeatTaskWDiscreteForce::CrankIterator_Thread(int ThreadNum, int ThreadID)
+{
+    int i,j;
+
+    int H = (xSize-2)/ThreadNum;
+    int Istart  = 1+ThreadID*H;
+    int Iend    =   Istart + H;
+
+    double hx_s = hx*hx,
+            hy_s = hy*hy;
+
+
+    for(i = Istart; i < Iend; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            next_u[i][j] = u[i][j]+ (TCC*((next_u[i-1][j]-2.*next_u[i][j]+next_u[i+1][j])/hx_s  +
+                    (next_u[i][j-1]-2.*next_u[i][j]+next_u[i][j+1])/hy_s) +
+                    Force[i][j] +  Prev_du_dt[i][j])*dt*0.5;
+        }
+    }
+}
+
+void HeatTaskWDiscreteForce::CrankIterator_Crutch(HeatTaskWDiscreteForce *Task,
+                                                  int ThreadNum, int ThreadID)
+{
+    Task->CrankIterator_Thread(ThreadNum, ThreadID);
+}
+
+void HeatTaskWDiscreteForce::StepInTime_Crank()
+{
+    int i,j;
+    double hx_s = hx*hx,
+            hy_s = hy*hy;
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            Prev_du_dt[i][j] = TCC*( (u[i-1][j]-2.*u[i][j]+u[i+1][j])/hx_s  +
+                    (u[i][j-1]-2.*u[i][j]+u[i][j+1])/hy_s) +
+                    Force[i][j];
+
+            next_u[i][j] = u[i][j] + Prev_du_dt[i][j]*dt;
+        }
+    }
+
+    CrankIterator(5);
+
+    for(i = 1; i < xSize-1; i++)
+    {
+        for(j = 1; j < ySize-1; j++)
+        {
+            u[i][j] = next_u[i][j];
+        }
+    }
+
+    time += dt;
+}

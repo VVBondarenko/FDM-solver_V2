@@ -2,14 +2,6 @@
 
 using namespace std;
 
-/*
- * ToDo:
- *
- *  add normal error control
- *  add selectivity to multy-resolution
- *
- */
-
 class CFDairfoil : public CFDProblem
 {
 
@@ -34,54 +26,29 @@ public:
     }
 };
 
-void CallOutput(CFDProblem *Task, const char *name)
-{
-    Task->ParaViewOutput_v2(name);
-}
-
 int main()
 {
     CFDProblem *Test = new CFDairfoil(-1.,3.,
                                       -1.,1.,
                                       256, 128,
                                       1e-3,3./520.);
-    Test->SetThreadNum(6);
+    Test->SetThreadNum(4);
 
     Test->SetInitialConditions(24.);
     Test->StreamFunc->Iterate(20,4);
     int k;
-//    scanf("%d",&k);
     char name[50];
 
-/*
-
-//  part of possible future balancer mechanism
-
-    int nodes = 0,p;
-    for(k=1;k<Test->xSize-1;k++)
-    {
-        if(k%(Test->xSize/8)==0)
-        {
-            printf("%d\n",nodes);
-            nodes = 0;
-        }
-        for(p=1;p<Test->ySize-1;p++)
-        {
-
-            if(Test->StreamFunc->NodeState[k][p] == 0)
-                nodes++;
-        }
-    }
-    printf("%d\n",nodes);
-*/
     for(k=0; k<6000; k++)
     {
         Test->StepInTime();
+
         if(k%50==0)
         {
             sprintf(name, "result_%6.6d.nc", k);
-            Test->ParaViewOutput_v2(name);
+            Test->ParaViewOutput_NetCDF(name);
         }
+
     }
     return 0;
 }

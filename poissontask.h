@@ -103,7 +103,7 @@ public:
         double hx_s = hx*hx,
                hy_s = hy*hy;
         double u_temp;
-//        int Nactive = 0;
+
         for(i = Istart; i < Iend; i++)
         {
             for(j = 1; j < ySize-1; j++)
@@ -111,23 +111,19 @@ public:
                 if(NodeState[i][j]==0)
                 {
                     u_temp= ((u[i+1][j]+u[i-1][j]-Force[i][j]*hx_s)*hy_s
-                            +(u[i][j+1]+u[i][j-1])*hx_s
-                            /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
+                            +(u[i][j+1]+u[i][j-1])*hx_s)*0.5/(hx_s+hy_s);
                     if(fabs(u_temp-u[i][j])<1.e-7)
                         NodeState[i][j] = -1;
                     u[i][j] = u_temp;
-//                    Nactive++;
                 }
             }
         }
-//        printf("%d\n",Nactive);
     }
 
     void Iterate(int n, int ResetActivesNum)
     {
 
         int i,j,K;
-//        int ThreadNum = 6;
         for(K=0; K<n; K++)
         {
             std::vector<std::thread> ThrPool;
@@ -157,12 +153,6 @@ public:
         for(K=0; K<n; K++)
         {
             int i, j;
-//            int H = (xSize-2)/4;
-//            int Istart  = 1+ThreadID*H;
-//            int Iend    =   Istart + H;
-//            if(ThreadID==3)
-//                Iend = xSize-1;
-
             double hx_s = hx*hx,
                    hy_s = hy*hy;
 
@@ -204,8 +194,7 @@ public:
             {
 
                 tmp_u[i][j] = ((u[i+1][j]+u[i-1][j]-Force[i][j]*hx_s)*hy_s
-                              +(u[i][j+1]+u[i][j-1])*hx_s
-                              /*- Force[i][j]*hx_s*hy_s*/)*0.5/(hx_s+hy_s);
+                              +(u[i][j+1]+u[i][j-1])*hx_s)*0.5/(hx_s+hy_s);
 
             }
         }

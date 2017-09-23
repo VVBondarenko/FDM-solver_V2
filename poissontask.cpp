@@ -36,28 +36,13 @@ PoissonTask::PoissonTask(double LX, double RX, double LY, double RY, int XSize, 
     for(i = 0; i < xSize; i++)
             u[i] = new double[ySize];
 
-//    u = (double**)malloc(xSize * sizeof(double*));
-//    for(i=0; i<xSize; i++)
-//        u[i] = (double*)malloc(ySize * sizeof(double));
-
-
     tmp_u = new double* [xSize];
     for(i = 0; i < xSize; i++)
         tmp_u[i] = new double[ySize];
 
-//    tmp_u = (double**)malloc(xSize * sizeof(double*));
-//    for(i=0; i<xSize; i++)
-//        tmp_u[i] = (double*)malloc(ySize * sizeof(double));
-
-
     u_err = new double* [xSize];
     for(i = 0; i < xSize; i++)
         u_err[i] = new double[ySize];
-
-//    u_err = (double**)malloc(xSize * sizeof(double*));
-//    for(i=0; i<xSize; i++)
-//        u_err[i] = (double*)malloc(ySize * sizeof(double));
-
 
     for(i=0;i<xSize;i++)
     {
@@ -124,7 +109,6 @@ double PoissonTask::IterateWAutostop(int maxIters, double stop_criteria)
     {
             this->Iterate(30);
             current_err = this->EstimateConvolution();
-//            printf("Iters\n");
     }
     return current_err;
 }
@@ -182,27 +166,6 @@ void PoissonTask::Plot(int Kind)
             script.push_back("set term wxt");
             script.push_back("set view map");
             script.push_back("plot \".temp\" with line lt -1");
-//            script.push_back("");
-//            script.push_back("load '../parula.pal'");
-//            script.push_back("splot \"result.dat\" using 1:2:3 with image");
-/*
- *
-unset surface
-set pm3d at s
-set palette rgbformulae 33,13,10
-set dgrid3d 65,65
-set contour
-set cntrparam levels incremental -2,0.02,2
-set zlabel  offset character 1, 0, 0 font "" textcolor lt -1 norotate
-set table '.temp'
-splot "plot_region" with line ls 7 palette notitle
-unset table
-reset
-set term wxt
-set view map
-plot ".temp" with line lt -1
- *
- */
         }
 
         Graph.open();
@@ -231,7 +194,6 @@ plot ".temp" with line lt -1
                 script.push_back("splot \"result.dat\" using 1:2:3 with image");
             }
 
-//            Graph.open();
             Graph.execute(script);
             PreviousPlotKind = Kind;
         }
@@ -253,7 +215,6 @@ double PoissonTask::ExactError()
     {
         for(j=0;j<ySize;j++)
         {
-//            fprintf(output,"%f %f %f\n",lx+hx*i,ly+hy*j,u[i][j]);
             u_err[i][j] = fabs(u[i][j]-exact_u(lx+hx*i,ly+hy*j));
             if(u_err[i][j]>maxErr)
                 maxErr = u_err[i][j];

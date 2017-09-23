@@ -37,7 +37,6 @@ public:
     double StreamBoundaryFunc(double x, double y);
     virtual double profileRfunc(double x, double y, double theta)
     {
-//        return 0.04-((x+0.5)*(x+0.5)+y*y);
         return 0.*x*y*theta;
     }
 
@@ -48,9 +47,10 @@ public:
     void UpdateConvectiveForce_Thread(int ThreadNum, int ThreadID);
     static void UpdateConvectiveForce_Crutch(CFDProblem *Task, int ThreadNum, int ThreadID);
 
+    void Imitate_EHD_Actuator();
 
-    void ParaViewOutput     (const char *filename);
-    void ParaViewOutput_v2  (const char *filename);
+    void ParaViewOutput_TecPlotASCII(const char *filename);
+    void ParaViewOutput_NetCDF      (const char *filename);
 
 
     void SetThreadNum(int n);

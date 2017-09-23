@@ -58,8 +58,6 @@ CFDProblem::CFDProblem(double LX, double RX, double LY, double RY, int XSize, in
             vx[i][j] = 0.;
             vy[i][j] = 0.;
         }
-//    double StreamBoundaryFunc;
-//    int xSize, ySize;
 }
 
 void CFDProblem::SetInitialConditions(double AngleOfAttack)
@@ -160,21 +158,12 @@ double PoiseuilleStreamFunc(double t, double p)
 
 double CFDProblem::StreamBoundaryFunc(double x, double y)
 {
-    return PoiseuilleStreamFunc((y+1.)/2.,1.);
+    return PoiseuilleStreamFunc((y+1.)/2.+0.*x,1.);
 }
-
-//virtual double CFDProblem::bodyRfunc(double x, double y, double theta)
-//{
-//    return 0.04-((x+0.5)*(x+0.5)+y*y);
-//}
-
-
 
 void CFDProblem::StepInTime()
 {
-    double hx_s = StreamFunc->hx*StreamFunc->hx,
-           hy_s = StreamFunc->hy*StreamFunc->hy,
-           hxhy = 0.25/CurlFunc->hx/CurlFunc->hy;
+    double hy_s = StreamFunc->hy*StreamFunc->hy;
 
     int i,j;
 
@@ -195,28 +184,7 @@ void CFDProblem::StepInTime()
         CurlFunc->u[xSize-1][i] = //-(StreamFunc->u[Nx-1][i]     -2.*StreamFunc->u[Nx-2][i]+StreamFunc->u[Nx-3][i]   )/hx_s
                                     -(StreamFunc->u[xSize-1][i+1]   -2.*StreamFunc->u[xSize-1][i]+StreamFunc->u[xSize-1][i-1] )/hy_s;
     } //условия на границе "внешнего" течения (на стоки и источнике жидкости)
-/*
-    for(i = 1; i < xSize-1; i++)
-    {
-        for( j = 1; j< ySize-1; j++)
-        {
-            if(StreamFunc->NodeState[i][j]==1)
-            {
-                StreamFunc->u[i][j]  = 0.5;
-                CurlFunc->u[i][j]    =  -(StreamFunc->u[i-1][j] -2.*StreamFunc->u[i][j] +StreamFunc->u[i+1][j])/hx_s
-                                        -(StreamFunc->u[i][j-1] -2.*StreamFunc->u[i][j] +StreamFunc->u[i][j+1])/hy_s;
-            }//условия на твёрдые тела внутри потока
 
-
-            //консервативная форма переносной силы
-            CurlFunc->Force[i][j] =
-                    -((CurlFunc->u[i+1][j]*(StreamFunc->u[i+1][j+1]-StreamFunc->u[i+1][j-1])
-                      -CurlFunc->u[i-1][j]*(StreamFunc->u[i-1][j+1]-StreamFunc->u[i-1][j-1])) -
-                      (CurlFunc->u[i][j+1]*(StreamFunc->u[i+1][j+1]-StreamFunc->u[i-1][j+1])
-                      -CurlFunc->u[i][j-1]*(StreamFunc->u[i+1][j-1]-StreamFunc->u[i-1][j-1])))*hxhy;
-        }
-    }
-*/
     UpdateConvectiveForce();
 
     CurlFunc->StepInTime_Crank();
@@ -226,33 +194,15 @@ void CFDProblem::StepInTime()
         {
             StreamFunc->Force[i][j] = -CurlFunc->u[i][j];
         }
-//    StreamFunc->IterateWAutostop(10,1e-10);
 
     StreamFunc->Iterate(4,4);
-//    StreamFunc->IterateOnMultyRes(3,2);
-//    StreamFunc->Iterate(2);
-//    printf("%e\n",StreamFunc->EstimateConvolution());
 
     //EHD actuator's part
-//    for(i=1; i<xSize-1; i++)
-//    {
-//        for(j=1; j<ySize-1; j++)
-//        {
-//            if(StreamFunc->NodeState[i][j-1]==1 && StreamFunc->NodeState[i][j]==0)
-//            {
-//                StreamFunc->u[i][j] = -hy/4.5+StreamFunc->u[i][j-1];
-////                StreamFunc->NodeState[i][j] = 2;
-
-//            }
-//        }
-//    }
-
-
+//    Imitate_EHD_Actuator();
 }
 
 void CFDProblem::UpdateConvectiveForce()
 {
-//    int ThreadNum = 6;
     int i;
     std::vector<std::thread> ThrPool;
 
@@ -308,7 +258,17 @@ void CFDProblem::UpdateConvectiveForce_Crutch(CFDProblem *Task, int ThreadNum, i
     Task->UpdateConvectiveForce_Thread(ThreadNum, ThreadID);
 }
 
-void CFDProblem::ParaViewOutput(const char *filename)
+void CFDProblem::Imitate_EHD_Actuator()
+{
+    int i,j;
+
+    for(i=1; i<xSize-1; i++)
+        for(j=1; j<ySize-1; j++)
+            if(StreamFunc->NodeState[i][j-1]==1 && StreamFunc->NodeState[i][j]==0)
+                StreamFunc->u[i][j] = -hy/4.5+StreamFunc->u[i][j-1];
+}
+
+void CFDProblem::ParaViewOutput_TecPlotASCII(const char *filename)
 {
     int i, j;
     FILE *velocityValue;
@@ -320,12 +280,11 @@ void CFDProblem::ParaViewOutput(const char *filename)
     for(i=0;i<xSize;i++)
         for(j=0;j<ySize;j++)
             fprintf(velocityValue,"%f %f %f %f\n",hx*i+lx, hy*j+ly, vx[i][j], vy[i][j]);
-                                               //sqrt(vx[i][j]*vx[i][j]+vy[i][j]*vy[i][j]));
+
     fclose(velocityValue);
 }
 
-
-void CFDProblem::ParaViewOutput_v2(const char *filename)
+void CFDProblem::ParaViewOutput_NetCDF(const char *filename)
 {
     try
     {
@@ -394,8 +353,6 @@ void CFDProblem::ParaViewOutput_v2(const char *filename)
         BodyRf.putVar(body);
 
         return;
-//        dataFile.write();
-//        data.putVar(dataOut);
     }
     catch(NcException& e)
     {
